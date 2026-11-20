@@ -224,11 +224,18 @@ app.get('/api/videos', auth, wrap(async (req, res) => {
   const videos = [];
   for (const r of results) {
     if (r.status !== 'fulfilled') { failed++; continue; }
-    for (const v of r.value.slice(0, s.perChannel)) {
+    // Filter first, then take up to perChannel of what's left.
+    let kept = 0;
+    for (const v of r.value) {
+      if (kept >= s.perChannel) break;
       if (s.hideShorts && v.secs <= 180) continue;
-      const t = v.title.toLowerCase();
-      if (words.some(w => t.includes(w))) continue;
-      videos.push(v);
+      if (words.length) {
+        const text = [v.title, v.desc || '', ...(v.tags || [])].join(' \n ').toLowerCase();
+        if (words.some(w => text.includes(w))) continue;
+      }
+      const { desc, tags, ...pub } = v;   // keep description/tags on the server
+      videos.push(pub);
+      kept++;
     }
   }
   videos.sort((a, b) => b.published.localeCompare(a.published));

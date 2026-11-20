@@ -101,7 +101,7 @@ device picks up changes within 10 minutes or when the app is reopened.
 | Forgot PIN → sign out, sign in again with Google → set a new PIN (allowed within 10 min of sign-in) | `/api/pin` |
 | Channel lookup by @handle / link / ID | `/api/channels` |
 | Shared hourly video cache, serves stale data if YouTube fails | `youtube.js` |
-| Filters (blocked words, Shorts ≤ 3 min) applied per family | `/api/videos` |
+| Filters applied per family, before the per-channel limit: Shorts ≤ 3 min, blocked words in title / description / tags | `/api/videos` |
 | Daily limit tracked on the server, so it works across devices | `/api/usage/*` |
 | Delete account (removes all of the parent's data) | `DELETE /api/account` |
 

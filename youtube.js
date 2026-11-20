@@ -63,7 +63,11 @@ const inflight = new Map();
 export function channelVideos(id) {
   const row = getChannel(id);
   if (!row) return Promise.resolve([]);
-  if (row.videos && Date.now() - row.fetched_at < CACHE_MS) return Promise.resolve(JSON.parse(row.videos));
+  if (row.videos && Date.now() - row.fetched_at < CACHE_MS) {
+    const cached = JSON.parse(row.videos);
+    // lists saved before tags/description were stored get refreshed once
+    if (!cached.length || cached[0].tags !== undefined) return Promise.resolve(cached);
+  }
   if (inflight.has(id)) return inflight.get(id);
   const p = refresh(row).finally(() => inflight.delete(id));
   inflight.set(id, p);
@@ -94,7 +98,10 @@ async function refresh(row) {
           channel: v.snippet.channelTitle,
           published: v.snippet.publishedAt,
           secs: isoSecs(v.contentDetails.duration),
-          thumb: (t.high || t.medium || t.default || {}).url || ''
+          thumb: (t.high || t.medium || t.default || {}).url || '',
+          // used only for blocked-word filtering on the server (never sent to the browser)
+          desc: (v.snippet.description || '').slice(0, 1500),
+          tags: (v.snippet.tags || []).slice(0, 40)
         });
       }
       videos.sort((a, b) => b.published.localeCompare(a.published));
