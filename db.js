@@ -57,6 +57,19 @@ CREATE TABLE IF NOT EXISTS usage (
 );
 `);
 
+// Columns added after the first release (SQLite has no "ADD COLUMN IF NOT EXISTS").
+function addColumn(table, col, type) {
+  if (!db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === col)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+  }
+}
+addColumn('channels', 'handle', 'TEXT');                       // lower-case @handle, so re-adding costs no quota
+addColumn('channels', 'ids', 'TEXT');                          // video ids from the last check
+addColumn('channels', 'full_at', 'INTEGER NOT NULL DEFAULT 0'); // last full re-check of every video
+addColumn('playlists', 'ids', 'TEXT');
+addColumn('playlists', 'full_at', 'INTEGER NOT NULL DEFAULT 0');
+db.exec('CREATE INDEX IF NOT EXISTS channels_handle ON channels(handle)');
+
 // Housekeeping: drop expired sessions and old usage rows once a day.
 function cleanup() {
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now());

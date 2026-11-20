@@ -4,6 +4,7 @@ const BASE = process.env.YT_API_BASE || 'https://www.googleapis.com/youtube/v3';
 const CACHE_MS = (parseInt(process.env.CACHE_MINUTES) || 60) * 60 * 1000;
 const PICK_CACHE_MS = 24 * 3600 * 1000;      // single videos: re-check once a day (still public/embeddable?)
 const PLAYLIST_PAGES = 2;                      // playlists: up to 100 videos
+const FULL_CHECK_MS = 24 * 3600 * 1000;        // re-check every cached video's status once a day
 
 async function yt(endpoint, params) {
   const u = new URL(BASE + '/' + endpoint);
@@ -57,8 +58,8 @@ async function videoDetails(ids) {
   return ids.map(id => found.get(id)).filter(Boolean);
 }
 
-/** Videos of a playlist (an uploads list or a normal playlist), up to `pages` × 50. */
-async function listVideos(playlistId, pages) {
+/** Video ids of a playlist (an uploads list or a normal playlist), up to `pages` × 50. 1 quota unit per page. */
+async function listIds(playlistId, pages) {
   const ids = [];
   let pageToken;
   for (let i = 0; i < pages; i++) {
@@ -73,7 +74,26 @@ async function listVideos(playlistId, pages) {
     pageToken = pl.nextPageToken;
     if (!pageToken) break;
   }
-  return videoDetails([...new Set(ids)]);
+  return [...new Set(ids)];
+}
+
+/**
+ * Refresh a cached list cheaply: always re-read the id list (1 unit/page), but only fetch details for
+ * videos not seen in the last check. Once a day (or for old-format data) re-check every video, so
+ * ones that became private, deleted or non-embeddable drop out.
+ */
+async function refreshList(playlistId, pages, row) {
+  const ids = await listIds(playlistId, pages);
+  let prev = null;
+  try { prev = row.videos && row.ids ? JSON.parse(row.videos) : null; } catch {}
+  const full = !prev || Date.now() - (row.full_at || 0) > FULL_CHECK_MS
+    || (prev.length && prev[0].tags === undefined);
+  if (full) return { videos: await videoDetails(ids), ids, full: true };
+
+  const seen = new Set(JSON.parse(row.ids));
+  const known = new Map(prev.map(v => [v.id, v]));          // ids seen but not here were unplayable — stay dropped
+  const fresh = new Map((await videoDetails(ids.filter(id => !seen.has(id)))).map(v => [v.id, v]));
+  return { videos: ids.map(id => fresh.get(id) || known.get(id)).filter(Boolean), ids, full: false };
 }
 
 /* ---------------- input parsing ---------------- */
@@ -112,8 +132,9 @@ function cachedList(key, row, load, save) {
   if (inflight.has(key)) return inflight.get(key);
   const p = (async () => {
     try {
-      const videos = await load();
-      save.run(JSON.stringify(videos), Date.now(), row.id);
+      const { videos, ids, full } = await load();
+      const t = Date.now();
+      save.run(JSON.stringify(videos), JSON.stringify(ids), t, full ? t : row.full_at || 0, row.id);
       return videos;
     } catch (e) {
       console.error(`[youtube] refresh ${key} failed:`, e.message);
@@ -127,20 +148,20 @@ function cachedList(key, row, load, save) {
 
 /* ---------------- channels ---------------- */
 const getChannelStmt = db.prepare('SELECT * FROM channels WHERE id = ?');
-const upsertChannel = db.prepare(`INSERT INTO channels (id, title, thumb, uploads) VALUES (@id, @title, @thumb, @uploads)
-  ON CONFLICT(id) DO UPDATE SET title = excluded.title, thumb = excluded.thumb, uploads = excluded.uploads`);
-const saveChannelVideos = db.prepare('UPDATE channels SET videos = ?, fetched_at = ? WHERE id = ?');
+const getChannelByHandle = db.prepare('SELECT * FROM channels WHERE handle = ?');
+const upsertChannel = db.prepare(`INSERT INTO channels (id, title, thumb, uploads, handle) VALUES (@id, @title, @thumb, @uploads, @handle)
+  ON CONFLICT(id) DO UPDATE SET title = excluded.title, thumb = excluded.thumb, uploads = excluded.uploads,
+    handle = COALESCE(excluded.handle, channels.handle)`);
+const saveChannelVideos = db.prepare('UPDATE channels SET videos = ?, ids = ?, fetched_at = ?, full_at = ? WHERE id = ?');
 
 export const getChannel = id => getChannelStmt.get(id);
 
-/** Look up a channel by @handle, link or UC… id. Costs 1 quota unit (0 if already known by id). */
+/** Look up a channel by @handle, link or UC… id. Costs 1 quota unit, or 0 if it's already known. */
 export async function resolveChannel(input) {
   const q = parseChannelInput(input);
   if (!q) throw userError(400, 'Paste a channel link, @handle or channel ID');
-  if (q.id) {
-    const known = getChannel(q.id);
-    if (known) return known;
-  }
+  const known = q.id ? getChannel(q.id) : getChannelByHandle.get(q.forHandle.toLowerCase());
+  if (known) return known;
   const j = await yt('channels', { part: 'snippet,contentDetails', ...q });
   const c = j.items?.[0];
   if (!c) throw userError(404, 'Channel not found — check the handle');
@@ -148,7 +169,8 @@ export async function resolveChannel(input) {
     id: c.id,
     title: c.snippet.title,
     thumb: c.snippet.thumbnails?.default?.url || '',
-    uploads: c.contentDetails.relatedPlaylists.uploads
+    uploads: c.contentDetails.relatedPlaylists.uploads,
+    handle: (q.forHandle || c.snippet.customUrl || '').toLowerCase() || null
   });
   return getChannel(c.id);
 }
@@ -158,8 +180,9 @@ export function channelVideos(id) {
   const row = getChannel(id);
   if (!row) return Promise.resolve([]);
   return cachedList('ch:' + id, row, async () => {
-    const videos = await listVideos(row.uploads, 1);
-    return videos.sort((a, b) => b.published.localeCompare(a.published));
+    const r = await refreshList(row.uploads, 1, row);
+    r.videos.sort((a, b) => b.published.localeCompare(a.published));
+    return r;
   }, saveChannelVideos);
 }
 
@@ -167,7 +190,7 @@ export function channelVideos(id) {
 const getPlaylistStmt = db.prepare('SELECT * FROM playlists WHERE id = ?');
 const upsertPlaylist = db.prepare(`INSERT INTO playlists (id, title, thumb, channel) VALUES (@id, @title, @thumb, @channel)
   ON CONFLICT(id) DO UPDATE SET title = excluded.title, thumb = excluded.thumb, channel = excluded.channel`);
-const savePlaylistVideos = db.prepare('UPDATE playlists SET videos = ?, fetched_at = ? WHERE id = ?');
+const savePlaylistVideos = db.prepare('UPDATE playlists SET videos = ?, ids = ?, fetched_at = ?, full_at = ? WHERE id = ?');
 
 export const getPlaylist = id => getPlaylistStmt.get(id);
 
@@ -194,7 +217,7 @@ export async function resolvePlaylist(input) {
 export function playlistVideos(id) {
   const row = getPlaylist(id);
   if (!row) return Promise.resolve([]);
-  return cachedList('pl:' + id, row, () => listVideos(id, PLAYLIST_PAGES), savePlaylistVideos);
+  return cachedList('pl:' + id, row, () => refreshList(id, PLAYLIST_PAGES, row), savePlaylistVideos);
 }
 
 /* ---------------- single videos ("picks") ---------------- */

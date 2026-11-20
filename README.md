@@ -12,8 +12,11 @@ nginx (kidsyt.ehfservices.com) ──► Docker: Node (server.js, port 3100) ─
                                          └─► YouTube Data API (your one key, never sent to browsers)
 ```
 
-Each channel's video list is fetched at most once per hour and shared by every family, so quota grows with the
-number of *different channels*, not the number of parents (≈2 units per channel per hour; 10,000 free units/day).
+Each channel's / playlist's video list is checked at most once per hour, only while someone is using it, and shared
+by every family, so quota grows with the number of *different channels*, not the number of parents.
+An hourly check reads only the list of video ids (1 unit per 50 videos) and fetches details just for new uploads;
+every video is fully re-checked once a day. Removing and re-adding a channel or playlist costs nothing, since it
+stays cached. Roughly 1 unit per channel per hour (10,000 free units/day).
 
 ---
 
