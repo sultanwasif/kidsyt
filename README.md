@@ -108,6 +108,8 @@ device picks up changes within 10 minutes or when the app is reopened.
 | Shared hourly video cache, serves stale data if YouTube fails | `youtube.js` |
 | Filters applied per family, before the per-channel limit: Shorts ≤ 3 min, blocked words in title / description / tags | `/api/videos` |
 | Daily limit tracked on the server, so it works across devices | `/api/usage/*` |
+| Watch history: video + minutes per day, kept 7 days, parent can clear | `/api/history` |
+| Installable app (manifest + icons) for iPhone/iPad/Android home screens | `public/manifest.json` |
 | Delete account (removes all of the parent's data) | `DELETE /api/account` |
 
 ## Before you invite other parents

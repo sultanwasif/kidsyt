@@ -2,7 +2,7 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import crypto from 'node:crypto';
 import { OAuth2Client } from 'google-auth-library';
-import { db } from './db.js';
+import { db, HISTORY_DAYS } from './db.js';
 import {
   resolveChannel, channelVideos, getChannel,
   resolvePlaylist, playlistVideos, getPlaylist,
@@ -296,7 +296,37 @@ app.post('/api/usage/tick', auth, (req, res) => {
   const day = dayOf(req);
   db.prepare(`INSERT INTO usage (parent_id, day, seconds) VALUES (?, ?, ?)
     ON CONFLICT(parent_id, day) DO UPDATE SET seconds = seconds + excluded.seconds`).run(req.parent.id, day, secs);
+  const v = req.body?.video;
+  if (secs && v && /^[\w-]{11}$/.test(v.id)) {
+    const str = (x, n) => String(x ?? '').slice(0, n);
+    const thumb = /^https:\/\/i\d?\.ytimg\.com\//.test(v.thumb || '') ? str(v.thumb, 300) : '';
+    db.prepare(`INSERT INTO history (parent_id, day, video_id, title, channel, thumb, seconds, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(parent_id, day, video_id) DO UPDATE SET seconds = seconds + excluded.seconds, last_at = excluded.last_at,
+        title = excluded.title, channel = excluded.channel, thumb = excluded.thumb`)
+      .run(req.parent.id, day, v.id, str(v.title, 200), str(v.channel, 100), thumb, secs, now());
+  }
   res.json({ usage: usageFor(req.parent, day) });
+});
+
+/* ---------------- watch history (last 7 days) ---------------- */
+app.get('/api/history', auth, requireUnlock, (req, res) => {
+  const from = new Date(Date.parse(dayOf(req) + 'T00:00:00Z') - (HISTORY_DAYS - 1) * 86400000).toISOString().slice(0, 10);
+  const rows = db.prepare(`SELECT day, video_id AS id, title, channel, thumb, seconds FROM history
+    WHERE parent_id = ? AND day >= ? ORDER BY day DESC, last_at DESC`).all(req.parent.id, from);
+  const days = [];
+  for (const r of rows) {
+    let d = days[days.length - 1];
+    if (!d || d.day !== r.day) days.push(d = { day: r.day, seconds: 0, videos: [] });
+    d.seconds += r.seconds;
+    const { day, ...video } = r;
+    d.videos.push(video);
+  }
+  res.json({ days });
+});
+
+app.delete('/api/history', auth, requireUnlock, (req, res) => {
+  db.prepare('DELETE FROM history WHERE parent_id = ?').run(req.parent.id);
+  res.json({ ok: true });
 });
 
 app.post('/api/usage/bonus', auth, requireUnlock, (req, res) => {

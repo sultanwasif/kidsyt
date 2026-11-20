@@ -48,6 +48,17 @@ CREATE TABLE IF NOT EXISTS picks (
   data        TEXT NOT NULL,
   fetched_at  INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS history (
+  parent_id   INTEGER NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+  day         TEXT NOT NULL,
+  video_id    TEXT NOT NULL,
+  title       TEXT,
+  channel     TEXT,
+  thumb       TEXT,
+  seconds     INTEGER NOT NULL DEFAULT 0,
+  last_at     INTEGER NOT NULL,
+  PRIMARY KEY (parent_id, day, video_id)
+);
 CREATE TABLE IF NOT EXISTS usage (
   parent_id   INTEGER NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
   day         TEXT NOT NULL,
@@ -75,6 +86,12 @@ function cleanup() {
   db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(Date.now());
   const cutoff = new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10);
   db.prepare('DELETE FROM usage WHERE day < ?').run(cutoff);
+  db.prepare('DELETE FROM history WHERE day < ?').run(historyCutoff());
+}
+/** Watch history is kept for 7 days (today + the 6 days before; one extra day of slack for time zones). */
+export const HISTORY_DAYS = 7;
+export function historyCutoff() {
+  return new Date(Date.now() - HISTORY_DAYS * 86400000).toISOString().slice(0, 10);
 }
 cleanup();
 setInterval(cleanup, 24 * 3600 * 1000).unref();
