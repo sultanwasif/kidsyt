@@ -31,6 +31,11 @@
   .chips::-webkit-scrollbar{display:none}
   .chip{display:flex;align-items:center;gap:8px;flex:none;border:2px solid transparent;background:var(--card);border-radius:999px;padding:6px 14px 6px 6px;font-weight:600;font-size:15px}
   .chip.all{padding:8px 16px}
+  .chip{max-width:260px}
+  .chip .cl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .search{flex:1;min-width:0;max-width:380px;padding:9px 14px;border-radius:999px;border:1px solid #ffffff33;background:#0003;color:#fff;font-size:15px}
+  .search::placeholder{color:var(--muted)}
+  @media (max-width:480px){.logo{font-size:20px}.timer{padding:6px 9px;font-size:13px}.top{gap:8px}}
   .chip img{width:30px;height:30px;border-radius:50%}
   .chip.on{border-color:var(--accent);background:#ffcc3326}
   main{padding:12px 16px 40px}
@@ -115,7 +120,7 @@ const LS_FORGOT = 'kyt.forgotPin';
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
 
-let me = null, videos = [], byId = {}, filterCh = 'all';
+let me = null, videos = [], byId = {}, filterCh = 'all', query = '';
 let parentToken = null, unlockExp = 0;
 
 /* ---------------- API ---------------- */
@@ -337,11 +342,15 @@ function renderSetPin(first) {
 
 async function renderHome() {
   closePlayer();
-  app.innerHTML = `<header><div class="top"><div class="logo">Kids<span>Tube</span></div><div class="spacer"></div>
+  app.innerHTML = `<header><div class="top"><div class="logo">Kids<span>Tube</span></div>
+      <input class="search" id="q" type="search" placeholder="🔍 Search my videos" autocomplete="off" autocorrect="off" enterkeyhint="search"><div class="spacer"></div>
       <div class="timer hidden" id="timer"></div><button class="gear" id="gear" aria-label="Parent settings">⚙️</button></div>
       <div class="chips" id="chips"></div></header>
     <main><div class="grid" id="grid"></div><div class="msg" id="msg">Loading videos…</div></main>`;
   $('#gear').onclick = async () => { if (await ensureUnlocked()) renderParent(); };
+  $('#q').value = query;
+  $('#q').oninput = e => { query = e.target.value; drawGrid(); };
+  $('#q').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };   // hide the keyboard
   try {
     me = await api('/me');
     updateTimer();
@@ -369,17 +378,28 @@ function drawHome() {
   ];
   if (filterCh !== 'all' && !chipList.some(c => c.id === filterCh)) filterCh = 'all';
   chips.innerHTML = `<button class="chip all ${filterCh === 'all' ? 'on' : ''}" data-ch="all">⭐ All</button>` +
-    chipList.map(c => `<button class="chip ${c.thumb ? '' : 'all'} ${filterCh === c.id ? 'on' : ''}" data-ch="${esc(c.id)}">
-      ${c.thumb ? `<img class="${c.sq ? 'sq' : ''}" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.title)}</button>`).join('');
+    chipList.map(c => `<button class="chip ${c.thumb ? '' : 'all'} ${filterCh === c.id ? 'on' : ''}" data-ch="${esc(c.id)}" title="${esc(c.title)}">
+      ${c.thumb ? `<img class="${c.sq ? 'sq' : ''}" src="${esc(c.thumb)}" alt="">` : ''}<span class="cl">${esc(c.title)}</span></button>`).join('');
   chips.onclick = e => { const b = e.target.closest('[data-ch]'); if (b) { filterCh = b.dataset.ch; drawHome(); } };
-  const list = videos.filter(v => filterCh === 'all' || (v.src || []).includes(filterCh));
+  drawGrid();
+}
+// Search only looks through the videos already loaded (approved ones) — it never searches YouTube.
+function drawGrid() {
+  const grid = $('#grid'), msg = $('#msg');
+  if (!grid) return;
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const list = videos.filter(v => (filterCh === 'all' || (v.src || []).includes(filterCh))
+    && words.every(w => (v.title + ' ' + v.channel).toLowerCase().includes(w)));
   grid.innerHTML = list.map(card).join('');
   grid.onclick = e => { const b = e.target.closest('[data-v]'); if (b) play(byId[b.dataset.v]); };
-  msg.className = 'msg'; msg.textContent = 'No videos here yet.';
+  msg.className = 'msg';
+  msg.textContent = words.length ? `No videos match "${query.trim()}"` + (filterCh !== 'all' ? ' here — try ⭐ All' : '') : 'No videos here yet.';
   msg.classList.toggle('hidden', list.length > 0);
 }
 // Pick up changes a parent makes from their own phone.
-setInterval(() => { if (!playing && me && $('#grid') && !document.hidden) renderHome(); }, 10 * 60 * 1000);
+setInterval(() => {
+  if (!playing && me && $('#grid') && !document.hidden && document.activeElement?.id !== 'q') renderHome();
+}, 10 * 60 * 1000);
 
 function renderTimesUp() {
   app.innerHTML = `<div class="panel" style="text-align:center"><div class="big">🌙</div>
