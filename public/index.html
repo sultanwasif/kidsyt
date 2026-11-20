@@ -76,6 +76,9 @@
   .chan{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #ffffff14}
   .chan:last-child{border-bottom:0}
   .chan img{width:36px;height:36px;border-radius:50%}
+  .chan img.sq{width:64px;height:36px;border-radius:8px;object-fit:cover}
+  .chan .n small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+  .chip img.sq{border-radius:8px;width:44px;object-fit:cover}
   .chan .n{flex:1;font-weight:600}
   .x{background:#ffffff1f;border:0;border-radius:10px;padding:8px 12px}
   .note{min-height:20px;margin-top:8px;font-size:14px}
@@ -343,12 +346,14 @@ async function renderHome() {
     me = await api('/me');
     updateTimer();
     if (timeUp()) return renderTimesUp();
-    if (!me.settings.channels.length) { $('#msg').textContent = 'No channels yet — a parent can add them with ⚙️'; return; }
+    if (!me.channels.length && !me.playlists.length && !me.picks.length) {
+      $('#msg').textContent = 'No videos yet — a parent can add channels, playlists or videos with ⚙️'; return;
+    }
     const r = await api('/videos');
     videos = r.videos; me.usage = r.usage; updateTimer();
     byId = Object.fromEntries(videos.map(v => [v.id, v]));
     drawHome();
-    if (r.failedChannels) toast(`${r.failedChannels} channel(s) couldn't load right now`);
+    if (r.failedChannels) toast(`${r.failedChannels} channel(s) or playlist(s) couldn't load right now`);
   } catch (e) {
     if (e.status === 401) return;
     $('#msg').className = 'msg err'; $('#msg').textContent = 'Could not load videos: ' + e.message;
@@ -357,12 +362,17 @@ async function renderHome() {
 function drawHome() {
   const chips = $('#chips'), grid = $('#grid'), msg = $('#msg');
   if (!chips) return;
-  if (filterCh !== 'all' && !me.channels.some(c => c.id === filterCh)) filterCh = 'all';
+  const chipList = [
+    ...(me.picks.length ? [{ id: 'picks', title: '💖 My picks' }] : []),
+    ...me.playlists.map(p => ({ id: p.id, title: p.title, thumb: p.thumb, sq: true })),
+    ...me.channels
+  ];
+  if (filterCh !== 'all' && !chipList.some(c => c.id === filterCh)) filterCh = 'all';
   chips.innerHTML = `<button class="chip all ${filterCh === 'all' ? 'on' : ''}" data-ch="all">⭐ All</button>` +
-    me.channels.map(c => `<button class="chip ${filterCh === c.id ? 'on' : ''}" data-ch="${esc(c.id)}">
-      ${c.thumb ? `<img src="${esc(c.thumb)}" alt="">` : ''}${esc(c.title)}</button>`).join('');
+    chipList.map(c => `<button class="chip ${c.thumb ? '' : 'all'} ${filterCh === c.id ? 'on' : ''}" data-ch="${esc(c.id)}">
+      ${c.thumb ? `<img class="${c.sq ? 'sq' : ''}" src="${esc(c.thumb)}" alt="">` : ''}${esc(c.title)}</button>`).join('');
   chips.onclick = e => { const b = e.target.closest('[data-ch]'); if (b) { filterCh = b.dataset.ch; drawHome(); } };
-  const list = videos.filter(v => filterCh === 'all' || v.channelId === filterCh);
+  const list = videos.filter(v => filterCh === 'all' || (v.src || []).includes(filterCh));
   grid.innerHTML = list.map(card).join('');
   grid.onclick = e => { const b = e.target.closest('[data-v]'); if (b) play(byId[b.dataset.v]); };
   msg.className = 'msg'; msg.textContent = 'No videos here yet.';
@@ -384,7 +394,7 @@ function renderTimesUp() {
 function renderParent() {
   closePlayer();
   const s = me.settings;
-  let chans = me.channels.slice();
+  let chans = me.channels.slice(), pls = me.playlists.slice(), picks = me.picks.slice();
   const u = me.usage || { seconds: 0 };
   app.innerHTML = `<div class="panel">
     <div class="row" style="margin-bottom:12px"><h1 style="margin:0;flex:1">Parent settings</h1><button class="btn" id="done">Save ✓</button></div>
@@ -394,8 +404,22 @@ function renderParent() {
       <button class="btn" id="chAdd">Add</button></div>
       <div class="note" id="chNote"></div>
       <p class="small">On YouTube, open the channel → tap its name → copy the @handle, or use Share → Copy link.</p></div>
+    <div class="sec"><h3>Playlists</h3><div id="plList"></div>
+      <label>Add a playlist</label>
+      <div class="row"><input class="in" id="plIn" placeholder="https://www.youtube.com/playlist?list=…" autocapitalize="off" autocorrect="off">
+      <button class="btn" id="plAdd">Add</button></div>
+      <div class="note" id="plNote"></div>
+      <p class="small">Shows up to 100 videos from the playlist. On YouTube: open the playlist → Share → Copy link.
+      The playlist must be Public or Unlisted. New videos added to it show up within an hour.</p></div>
+    <div class="sec"><h3>Single videos</h3><div id="vList"></div>
+      <label>Add a video</label>
+      <div class="row"><input class="in" id="vIn" placeholder="https://youtu.be/… or youtube.com/watch?v=…" autocapitalize="off" autocorrect="off">
+      <button class="btn" id="vAdd">Add</button></div>
+      <div class="note" id="vNote"></div>
+      <p class="small">Shown under 💖 My picks. On YouTube: open the video → Share → Copy link.</p></div>
     <div class="sec"><h3>Filters</h3>
-      <label>Hide videos whose title contains (comma separated)</label>
+      <p class="small" style="margin:0">Apply to channels and playlists. Single videos you add yourself are always shown.</p>
+      <label>Hide videos whose title, description or tags contain (comma separated)</label>
       <input class="in" id="words" placeholder="e.g. GTA, horror, prank" value="${esc(s.blockWords.join(', '))}">
       <label class="check"><input type="checkbox" id="shorts" ${s.hideShorts ? 'checked' : ''}> Hide Shorts &amp; clips under 3 min</label>
       <label>Latest videos per channel</label>
@@ -430,6 +454,33 @@ function renderParent() {
     } catch (e) { n.className = 'note err'; n.textContent = e.cancelled ? '' : e.message; }
   };
   $('#chIn').onkeydown = e => { if (e.key === 'Enter') $('#chAdd').click(); };
+
+  // Playlists and single videos: same add/remove pattern as channels.
+  const listUi = ({ box, input, btn, note, path, get, set, empty, sq }) => {
+    const draw = () => {
+      const items = get();
+      $(box).innerHTML = items.length ? items.map(x => `<div class="chan">
+        ${x.thumb ? `<img class="${sq ? 'sq' : ''}" src="${esc(x.thumb)}" alt="">` : ''}
+        <div class="n">${esc(x.title)}${x.channel ? `<small>${esc(x.channel)}</small>` : ''}</div>
+        <button class="x" data-rm="${esc(x.id)}">Remove</button></div>`).join('') : `<p class="small">${empty}</p>`;
+    };
+    draw();
+    $(box).onclick = e => { const b = e.target.closest('[data-rm]'); if (b) { set(get().filter(x => x.id !== b.dataset.rm)); draw(); } };
+    $(btn).onclick = async () => {
+      const n = $(note); n.className = 'note'; n.textContent = 'Looking up…';
+      try {
+        const x = await papi(path, { method: 'POST', body: { input: $(input).value } });
+        if (get().some(y => y.id === x.id)) { n.className = 'note err'; n.textContent = 'Already added'; return; }
+        set([...get(), x]); draw(); $(input).value = '';
+        n.className = 'note ok'; n.textContent = 'Added ' + x.title + ' — tap Save when done';
+      } catch (e) { n.className = 'note err'; n.textContent = e.cancelled ? '' : e.message; }
+    };
+    $(input).onkeydown = e => { if (e.key === 'Enter') $(btn).click(); };
+  };
+  listUi({ box: '#plList', input: '#plIn', btn: '#plAdd', note: '#plNote', path: '/picks/playlist', sq: true,
+    get: () => pls, set: v => pls = v, empty: 'None yet.' });
+  listUi({ box: '#vList', input: '#vIn', btn: '#vAdd', note: '#vNote', path: '/picks/video', sq: true,
+    get: () => picks, set: v => picks = v, empty: 'None yet.' });
   const usageAct = async (path, body) => {
     try { const r = await papi(path, { method: 'POST', body }); me.usage = r.usage; toast('Updated'); }
     catch (e) { if (!e.cancelled) toast(e.message); }
@@ -457,12 +508,14 @@ function renderParent() {
     try {
       const r = await papi('/settings', { method: 'PUT', body: {
         channels: chans.map(c => c.id),
+        playlists: pls.map(p => p.id),
+        videos: picks.map(v => v.id),
         blockWords: $('#words').value.split(',').map(x => x.trim()).filter(Boolean),
         hideShorts: $('#shorts').checked,
         perChannel: parseInt($('#per').value) || 25,
         dailyLimit: parseInt($('#lim').value) || 0
       }});
-      me.settings = r.settings; me.channels = r.channels;
+      me.settings = r.settings; me.channels = r.channels; me.playlists = r.playlists; me.picks = r.picks;
       renderHome();
     } catch (e) { if (!e.cancelled) { note.className = 'note err'; note.textContent = e.message; } }
   };

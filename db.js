@@ -35,6 +35,19 @@ CREATE TABLE IF NOT EXISTS channels (
   videos      TEXT,
   fetched_at  INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS playlists (
+  id          TEXT PRIMARY KEY,
+  title       TEXT,
+  thumb       TEXT,
+  channel     TEXT,
+  videos      TEXT,
+  fetched_at  INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS picks (
+  id          TEXT PRIMARY KEY,
+  data        TEXT NOT NULL,
+  fetched_at  INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS usage (
   parent_id   INTEGER NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
   day         TEXT NOT NULL,

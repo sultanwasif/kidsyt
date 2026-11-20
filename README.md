@@ -100,6 +100,8 @@ device picks up changes within 10 minutes or when the app is reopened.
 | Parent PIN (scrypt hash, 6 tries / 5 min) → 15-min unlock token | `/api/pin`, `/api/pin/verify` |
 | Forgot PIN → sign out, sign in again with Google → set a new PIN (allowed within 10 min of sign-in) | `/api/pin` |
 | Channel lookup by @handle / link / ID | `/api/channels` |
+| Playlists by link (up to 100 videos, refreshed hourly, filters apply) | `/api/picks/playlist` |
+| Single videos by link (shown under "My picks", filters don't apply, re-checked daily) | `/api/picks/video` |
 | Shared hourly video cache, serves stale data if YouTube fails | `youtube.js` |
 | Filters applied per family, before the per-channel limit: Shorts ≤ 3 min, blocked words in title / description / tags | `/api/videos` |
 | Daily limit tracked on the server, so it works across devices | `/api/usage/*` |

@@ -3,7 +3,11 @@ import cookieParser from 'cookie-parser';
 import crypto from 'node:crypto';
 import { OAuth2Client } from 'google-auth-library';
 import { db } from './db.js';
-import { resolveChannel, channelVideos, getChannel } from './youtube.js';
+import {
+  resolveChannel, channelVideos, getChannel,
+  resolvePlaylist, playlistVideos, getPlaylist,
+  resolveVideo, pickVideos, getPick
+} from './youtube.js';
 
 const {
   GOOGLE_CLIENT_ID, YT_API_KEY,
@@ -51,7 +55,9 @@ function checkPin(pin, stored) {
 }
 const validPin = p => /^\d{4}$/.test(String(p || ''));
 
-const DEFAULT_SETTINGS = { channels: [], blockWords: [], hideShorts: true, dailyLimit: 60, perChannel: 25 };
+const DEFAULT_SETTINGS = {
+  channels: [], playlists: [], videos: [], blockWords: [], hideShorts: true, dailyLimit: 60, perChannel: 25
+};
 function readSettings(parent) {
   let s = {};
   try { s = JSON.parse(parent.settings || '{}'); } catch {}
@@ -143,6 +149,14 @@ app.post('/api/auth/logout', auth, (req, res) => {
 function channelInfo(ids) {
   return ids.map(getChannel).filter(Boolean).map(c => ({ id: c.id, title: c.title, thumb: c.thumb }));
 }
+function playlistInfo(ids) {
+  return ids.map(getPlaylist).filter(Boolean).map(p => ({ id: p.id, title: p.title, thumb: p.thumb, channel: p.channel }));
+}
+const pickInfo = v => ({ id: v.id, title: v.title, thumb: v.thumb, channel: v.channel });
+function picksInfo(ids) {
+  return ids.map(getPick).filter(Boolean).map(pickInfo);
+}
+const sourcesOf = s => ({ channels: channelInfo(s.channels), playlists: playlistInfo(s.playlists), picks: picksInfo(s.videos) });
 
 app.get('/api/me', auth, (req, res) => {
   const p = req.parent;
@@ -152,7 +166,7 @@ app.get('/api/me', auth, (req, res) => {
     hasPin: !!p.pin_hash,
     canResetPin: now() - p.session_created < FRESH_LOGIN_MS,
     settings,
-    channels: channelInfo(settings.channels),
+    ...sourcesOf(settings),
     usage: usageFor(p, dayOf(req))
   });
 });
@@ -189,6 +203,14 @@ app.put('/api/settings', auth, requireUnlock, (req, res) => {
     const ids = [...new Set(b.channels.filter(id => /^UC[\w-]{22}$/.test(id)))].slice(0, 50);
     next.channels = ids.filter(id => getChannel(id));          // only channels resolved through /api/channels
   }
+  if (Array.isArray(b.playlists)) {
+    const ids = [...new Set(b.playlists.filter(id => /^[\w-]{10,64}$/.test(id)))].slice(0, 20);
+    next.playlists = ids.filter(id => getPlaylist(id));        // only playlists resolved through /api/picks/playlist
+  }
+  if (Array.isArray(b.videos)) {
+    const ids = [...new Set(b.videos.filter(id => /^[\w-]{11}$/.test(id)))].slice(0, 200);
+    next.videos = ids.filter(id => getPick(id));               // only videos resolved through /api/picks/video
+  }
   if (Array.isArray(b.blockWords)) {
     next.blockWords = b.blockWords.map(w => String(w).trim().slice(0, 40)).filter(Boolean).slice(0, 50);
   }
@@ -196,18 +218,22 @@ app.put('/api/settings', auth, requireUnlock, (req, res) => {
   if (b.dailyLimit !== undefined) next.dailyLimit = Math.min(600, Math.max(0, parseInt(b.dailyLimit) || 0));
   if (b.perChannel !== undefined) next.perChannel = Math.min(50, Math.max(5, parseInt(b.perChannel) || 25));
   db.prepare('UPDATE parents SET settings = ? WHERE id = ?').run(JSON.stringify(next), req.parent.id);
-  res.json({ ok: true, settings: next, channels: channelInfo(next.channels) });
+  res.json({ ok: true, settings: next, ...sourcesOf(next) });
 });
 
-app.post('/api/channels', auth, requireUnlock, wrap(async (req, res) => {
+// Look-ups used by Parent settings → "Add". Each costs at most 1 YouTube quota unit.
+const lookup = (resolve, shape) => wrap(async (req, res) => {
   if (!rateLimit('resolve:' + req.parent.id, 30, 10 * 60000)) return fail(res, 429, 'Too many lookups — try again later');
   try {
-    const c = await resolveChannel(req.body?.input);
-    res.json({ id: c.id, title: c.title, thumb: c.thumb });
+    res.json(shape(await resolve(req.body?.input)));
   } catch (e) {
     fail(res, e.status && e.status < 500 ? e.status : 502, e.message);
   }
-}));
+});
+app.post('/api/channels', auth, requireUnlock, lookup(resolveChannel, c => ({ id: c.id, title: c.title, thumb: c.thumb })));
+app.post('/api/picks/playlist', auth, requireUnlock,
+  lookup(resolvePlaylist, p => ({ id: p.id, title: p.title, thumb: p.thumb, channel: p.channel })));
+app.post('/api/picks/video', auth, requireUnlock, lookup(resolveVideo, pickInfo));
 
 app.delete('/api/account', auth, requireUnlock, (req, res) => {
   db.prepare('DELETE FROM parents WHERE id = ?').run(req.parent.id);   // cascades sessions + usage
@@ -216,29 +242,51 @@ app.delete('/api/account', auth, requireUnlock, (req, res) => {
 });
 
 /* ---------------- videos ---------------- */
+// Every video carries `src`: the chips it belongs to ('picks', a playlist id, and/or a channel id).
 app.get('/api/videos', auth, wrap(async (req, res) => {
   const s = readSettings(req.parent);
-  const results = await Promise.allSettled(s.channels.map(channelVideos));
+  const sources = [
+    ...s.playlists.map(id => ({ id, load: playlistVideos(id), limit: Infinity })),
+    ...s.channels.map(id => ({ id, load: channelVideos(id), limit: s.perChannel }))
+  ];
+  const [picksR, ...results] = await Promise.allSettled([pickVideos(s.videos), ...sources.map(x => x.load)]);
   const words = s.blockWords.map(w => w.toLowerCase());
-  let failed = 0;
-  const videos = [];
-  for (const r of results) {
-    if (r.status !== 'fulfilled') { failed++; continue; }
-    // Filter first, then take up to perChannel of what's left.
+  const allowed = v => {
+    if (s.hideShorts && v.secs <= 180) return false;
+    if (!words.length) return true;
+    const text = [v.title, v.desc || '', ...(v.tags || [])].join(' \n ').toLowerCase();
+    return !words.some(w => text.includes(w));
+  };
+
+  const byId = new Map();
+  const add = (v, src) => {
+    const have = byId.get(v.id);
+    if (have) { if (!have.src.includes(src)) have.src.push(src); return; }
+    const { desc, tags, ...pub } = v;     // keep description/tags on the server
+    byId.set(v.id, { ...pub, src: [src] });
+  };
+
+  // 1. Single videos the parent added: newest first, never filtered (the parent chose each one).
+  const picks = picksR.status === 'fulfilled' ? picksR.value.slice().reverse() : [];
+  for (const v of picks) add(v, 'picks');
+
+  // 2. Playlists (up to 100 each) and channels (latest perChannel): filters first, then the limit.
+  let failed = picksR.status === 'fulfilled' ? 0 : 1;
+  results.forEach((r, i) => {
+    if (r.status !== 'fulfilled') { failed++; return; }
     let kept = 0;
     for (const v of r.value) {
-      if (kept >= s.perChannel) break;
-      if (s.hideShorts && v.secs <= 180) continue;
-      if (words.length) {
-        const text = [v.title, v.desc || '', ...(v.tags || [])].join(' \n ').toLowerCase();
-        if (words.some(w => text.includes(w))) continue;
-      }
-      const { desc, tags, ...pub } = v;   // keep description/tags on the server
-      videos.push(pub);
+      if (kept >= sources[i].limit) break;
+      if (!allowed(v)) continue;
+      add(v, sources[i].id);
       kept++;
     }
-  }
-  videos.sort((a, b) => b.published.localeCompare(a.published));
+  });
+
+  const pickIds = new Set(picks.map(v => v.id));
+  const rest = [...byId.values()].filter(v => !pickIds.has(v.id))
+    .sort((a, b) => b.published.localeCompare(a.published));
+  const videos = [...picks.map(v => byId.get(v.id)), ...rest];
   res.json({ videos, failedChannels: failed, usage: usageFor(req.parent, dayOf(req)) });
 }));
 
