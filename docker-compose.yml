@@ -1,0 +1,14 @@
+services:
+  kidsyt:
+    build: .
+    container_name: kidsyt
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0              # listen inside the container; the port below is still localhost-only on the VPS
+      PORT: 3100
+      DB_FILE: /app/data/kidsyt.db
+    ports:
+      - "127.0.0.1:3100:3100"    # only nginx on the VPS can reach it
+    volumes:
+      - ./data:/app/data         # SQLite database survives rebuilds

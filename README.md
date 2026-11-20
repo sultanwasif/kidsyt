@@ -7,7 +7,7 @@ Kids see only those channels: no search, no YouTube recommendations.
 Browser (kid's tablet / parent's phone)
    │  HTTPS
    ▼
-nginx (kidsyt.ehfservices.com) ──► Node (server.js, port 3100) ──► SQLite (data/kidsyt.db)
+nginx (kidsyt.ehfservices.com) ──► Docker: Node (server.js, port 3100) ──► SQLite (data/kidsyt.db)
                                          │
                                          └─► YouTube Data API (your one key, never sent to browsers)
 ```
@@ -47,25 +47,20 @@ number of *different channels*, not the number of parents (≈2 units per channe
 
 DNS first: in Hostinger, point an **A record** `kidsyt` → your VPS IP.
 
+Runs in Docker (needs Docker + the compose plugin, nginx and certbot on the host).
+
 ```bash
-# Node 22 + build tools + nginx + certbot
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt-get install -y nodejs build-essential python3 nginx certbot python3-certbot-nginx
-
-# App user + files
-sudo useradd --system --home /opt/kidsyt --shell /usr/sbin/nologin kidsyt
-sudo mkdir -p /opt/kidsyt
-# upload this folder's contents to /opt/kidsyt (scp / sftp / git), then:
+# App files
+sudo git clone https://github.com/sultanwasif/kidsyt.git /opt/kidsyt
 cd /opt/kidsyt
-sudo npm ci --omit=dev || sudo npm install --omit=dev
 sudo cp .env.example .env && sudo nano .env        # fill GOOGLE_CLIENT_ID and YT_API_KEY
-sudo mkdir -p data && sudo chown -R kidsyt:kidsyt /opt/kidsyt
 sudo chmod 600 .env
+sudo mkdir -p data && sudo chown 1000:1000 data    # container runs as user "node" (uid 1000)
 
-# Service
-sudo cp deploy/kidsyt.service /etc/systemd/system/
-sudo systemctl daemon-reload && sudo systemctl enable --now kidsyt
-sudo systemctl status kidsyt          # should say "active (running)"
+# Build + start (restarts automatically on reboot)
+sudo docker compose up -d --build
+sudo docker compose ps                # should say "running"
+curl -s http://127.0.0.1:3100/api/config   # should print {"googleClientId":"..."}
 
 # nginx + HTTPS
 sudo cp deploy/nginx-kidsyt.conf /etc/nginx/sites-available/kidsyt
@@ -76,9 +71,11 @@ sudo certbot --nginx -d kidsyt.ehfservices.com
 
 Open `https://kidsyt.ehfservices.com` → **Sign in with Google** → create a PIN → add channels → **Save**.
 
-Logs: `sudo journalctl -u kidsyt -f`
-Update after changing files: `sudo systemctl restart kidsyt`
-Backup: copy `/opt/kidsyt/data/kidsyt.db` (e.g. a nightly cron with `sqlite3 kidsyt.db ".backup backup.db"`).
+Logs: `cd /opt/kidsyt && sudo docker compose logs -f`
+Update: `cd /opt/kidsyt && sudo git pull && sudo docker compose up -d --build`
+Backup: copy `/opt/kidsyt/data/kidsyt.db` (stop the container first, or use `sqlite3 kidsyt.db ".backup backup.db"`).
+
+(`deploy/kidsyt.service` is only for running without Docker.)
 
 ---
 
