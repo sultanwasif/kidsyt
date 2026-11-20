@@ -7,7 +7,7 @@ Kids see only those channels: no search, no YouTube recommendations.
 Browser (kid's tablet / parent's phone)
    │  HTTPS
    ▼
-nginx (kidsyt.ehfservices.com) ──► Node (server.js, port 3000) ──► SQLite (data/kidsyt.db)
+nginx (kidsyt.ehfservices.com) ──► Node (server.js, port 3100) ──► SQLite (data/kidsyt.db)
                                          │
                                          └─► YouTube Data API (your one key, never sent to browsers)
 ```

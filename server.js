@@ -7,7 +7,7 @@ import { resolveChannel, channelVideos, getChannel } from './youtube.js';
 
 const {
   GOOGLE_CLIENT_ID, YT_API_KEY,
-  PORT = 3000, HOST = '127.0.0.1',
+  PORT = 3100, HOST = '127.0.0.1',
   COOKIE_SECURE = 'true'
 } = process.env;
 if (!GOOGLE_CLIENT_ID || !YT_API_KEY) {
