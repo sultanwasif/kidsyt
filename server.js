@@ -37,6 +37,15 @@ app.use((req, res, next) => {
   res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   next();
 });
+// Digital Asset Links for the Android (Play Store) app, so it opens full-screen without a browser bar.
+// .env: TWA_PACKAGE=com.ehfservices.kidstube  TWA_SHA256=AA:BB:...,CC:DD:...  (upload key + Play app-signing key)
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  const pkg = process.env.TWA_PACKAGE, fps = (process.env.TWA_SHA256 || '').split(',').map(s => s.trim()).filter(Boolean);
+  res.json(pkg && fps.length ? [{
+    relation: ['delegate_permission/common.handle_all_urls'],
+    target: { namespace: 'android_app', package_name: pkg, sha256_cert_fingerprints: fps }
+  }] : []);
+});
 app.use(express.static('public', { extensions: ['html'] }));
 
 /* ---------------- helpers ---------------- */
