@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kids Tube">
+<meta name="theme-color" content="#1b1446">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Kids Tube</title>
+<style>
+  :root{--bg:#1b1446;--bg2:#2a1f6b;--card:#ffffff14;--text:#fff;--muted:#c9c3ff;--accent:#ffcc33;--ok:#3ddc97;--danger:#ff5c5c}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{background:var(--bg2)}
+  html,body{margin:0;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{min-height:100vh;background:linear-gradient(160deg,var(--bg),var(--bg2));padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);-webkit-user-select:none;user-select:none}
+  button{font:inherit;color:inherit;cursor:pointer}
+  input{font:inherit;-webkit-user-select:text;user-select:text}
+  a{color:var(--accent)}
+  .hidden{display:none!important}
+  header{position:sticky;top:0;z-index:5;background:#1b1446ee;backdrop-filter:blur(8px);padding:12px 16px 8px}
+  .top{display:flex;align-items:center;gap:12px}
+  .logo{font-size:24px;font-weight:800}
+  .logo span{color:var(--accent)}
+  .spacer{flex:1}
+  .timer{background:#ffffff1f;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600}
+  .gear{background:none;border:0;font-size:22px;opacity:.45;padding:6px}
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{display:flex;align-items:center;gap:8px;flex:none;border:2px solid transparent;background:var(--card);border-radius:999px;padding:6px 14px 6px 6px;font-weight:600;font-size:15px}
+  .chip.all{padding:8px 16px}
+  .chip img{width:30px;height:30px;border-radius:50%}
+  .chip.on{border-color:var(--accent);background:#ffcc3326}
+  main{padding:12px 16px 40px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+  .card{display:block;text-align:left;background:none;border:0;padding:0}
+  .th{position:relative;aspect-ratio:16/9;border-radius:16px;overflow:hidden;background:#0003}
+  .th img{width:100%;height:100%;object-fit:cover;display:block}
+  .dur{position:absolute;right:8px;bottom:8px;background:#000c;border-radius:6px;padding:2px 6px;font-size:13px;font-weight:700}
+  .t{margin-top:8px;font-weight:700;font-size:16px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .c{margin-top:4px;color:var(--muted);font-size:13px}
+  .msg{text-align:center;color:var(--muted);padding:60px 20px;font-size:18px}
+  .msg.err{color:#ffb3b3}
+  #pw{position:fixed;inset:0;z-index:20;background:#000;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  .pbar{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#111}
+  .back{background:var(--accent);color:#222;border:0;border-radius:999px;padding:10px 18px;font-weight:800;font-size:16px;flex:none}
+  #ptitle{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .frame{position:relative;width:100%;max-height:68vh;aspect-ratio:16/9;margin:0 auto;background:#000}
+  .frame iframe,#player{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .upnext{flex:1;overflow-y:auto;padding:14px;background:linear-gradient(160deg,var(--bg),var(--bg2))}
+  .upnext h4{margin:0 0 10px;font-size:17px}
+  .upnext .grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+  .upnext .t{font-size:14px}
+  #toast{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--accent);color:#222;font-weight:800;padding:12px 20px;border-radius:999px;z-index:30;box-shadow:0 6px 20px #0006}
+  #pin{position:fixed;inset:0;z-index:40;background:#000b;display:flex;align-items:center;justify-content:center}
+  .pinbox{background:var(--bg2);border-radius:24px;padding:22px;width:300px;text-align:center}
+  .pinbox h3{margin:0 0 12px}
+  .dots{font-size:28px;letter-spacing:10px;margin-bottom:14px}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pad button{background:#ffffff1f;border:0;border-radius:16px;font-size:24px;font-weight:700;padding:14px 0}
+  .pinerr{color:#ffb3b3;min-height:20px;margin:10px 0 0}
+  .link{background:none;border:0;color:var(--muted);text-decoration:underline;font-size:14px;margin-top:6px}
+  .panel{max-width:760px;margin:0 auto;padding:16px}
+  .sec{background:var(--card);border-radius:18px;padding:16px;margin-bottom:16px}
+  .sec h3{margin:0 0 10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  label{display:block;font-weight:600;margin:10px 0 6px}
+  .in{width:100%;padding:12px;border-radius:12px;border:1px solid #ffffff33;background:#0003;color:#fff}
+  .row .in{flex:1;min-width:180px}
+  .btn{border:0;border-radius:12px;padding:12px 16px;font-weight:700;background:var(--accent);color:#222}
+  .btn.ghost{background:#ffffff1f;color:#fff}
+  .btn.danger{background:var(--danger);color:#fff}
+  .small{font-size:13px;color:var(--muted);line-height:1.5}
+  .chan{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #ffffff14}
+  .chan:last-child{border-bottom:0}
+  .chan img{width:36px;height:36px;border-radius:50%}
+  .chan .n{flex:1;font-weight:600}
+  .x{background:#ffffff1f;border:0;border-radius:10px;padding:8px 12px}
+  .note{min-height:20px;margin-top:8px;font-size:14px}
+  .note.err{color:#ffb3b3}.note.ok{color:var(--ok)}
+  .check{display:flex;gap:10px;align-items:center;font-weight:600;margin:10px 0}
+  .check input{width:22px;height:22px}
+  .big{font-size:64px;text-align:center;margin-top:12vh}
+  .who{display:flex;align-items:center;gap:10px}
+  .who img{width:40px;height:40px;border-radius:50%}
+  .hero{max-width:520px;margin:10vh auto 0;padding:24px;text-align:center}
+  .hero h1{font-size:40px;margin:0 0 8px}
+  .hero p{color:var(--muted);font-size:17px;line-height:1.5}
+  #gbtn{display:flex;justify-content:center;margin:28px 0 12px;min-height:44px}
+</style>
+</head>
+<body>
+<div id="app"><div class="msg">Loading…</div></div>
+
+<div id="pw" class="hidden">
+  <div class="pbar"><button class="back" id="closeP">← Back</button><div id="ptitle"></div></div>
+  <div class="frame"><div id="player"></div></div>
+  <div class="upnext"><h4 id="upTitle">More videos</h4><div class="grid" id="upGrid"></div></div>
+</div>
+<div id="toast" class="hidden"></div>
+<div id="pin" class="hidden"></div>
+
+<script>
+/* Kids Tube — client. Talks only to this site's /api; the YouTube API key stays on the server. */
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const today = () => new Date().toLocaleDateString('en-CA');
+const LS_FORGOT = 'kyt.forgotPin';
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
+
+let me = null, videos = [], byId = {}, filterCh = 'all';
+let parentToken = null, unlockExp = 0;
+
+/* ---------------- API ---------------- */
+async function api(path, { method = 'GET', body, unlock } = {}) {
+  const headers = { 'X-Local-Day': today() };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (unlock && parentToken) headers['X-Parent-Token'] = parentToken;
+  const r = await fetch('/api' + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, credentials: 'same-origin' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const e = new Error(j.error || 'Error ' + r.status); e.status = r.status;
+    if (r.status === 401 && me) { renderLogin(); }   // session ended while using the app
+    throw e;
+  }
+  return j;
+}
+// Parent-only call: asks for the PIN when the 15-minute unlock has expired, then retries once.
+async function papi(path, opts = {}) {
+  if (!(await ensureUnlocked())) throw Object.assign(new Error('Cancelled'), { cancelled: true });
+  try { return await api(path, { ...opts, unlock: true }); }
+  catch (e) {
+    if (e.status !== 403 || !/PIN required/.test(e.message)) throw e;
+    parentToken = null;
+    if (!(await ensureUnlocked())) throw Object.assign(new Error('Cancelled'), { cancelled: true });
+    return api(path, { ...opts, unlock: true });
+  }
+}
+function setUnlock(t) { parentToken = t; unlockExp = Date.now() + 14 * 60 * 1000; }
+async function ensureUnlocked() {
+  if (parentToken && Date.now() < unlockExp) return true;
+  return askPin();
+}
+
+/* ---------------- Formatting ---------------- */
+function fmt(s) {
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`;
+}
+function ago(iso) {
+  const d = (Date.now() - new Date(iso)) / 86400000;
+  if (d < 1) return 'today';
+  if (d < 2) return 'yesterday';
+  if (d < 30) return Math.floor(d) + ' days ago';
+  if (d < 365) return Math.floor(d / 30) + ' mo ago';
+  return Math.floor(d / 365) + ' yr ago';
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+/* ---------------- Screen time ---------------- */
+let playing = false, pending = 0;
+const timeUp = () => me && me.usage && me.usage.remaining === 0;
+function timerText() {
+  const r = me?.usage?.remaining;
+  return r == null ? '' : '⏱ ' + Math.ceil(r / 60) + ' min left';
+}
+function updateTimer() {
+  const t = $('#timer'); if (!t) return;
+  t.textContent = timerText(); t.classList.toggle('hidden', !timerText());
+}
+async function flush(keepalive) {
+  if (!pending) return;
+  const s = pending; pending = 0;
+  try {
+    const r = await fetch('/api/usage/tick', {
+      method: 'POST', keepalive: !!keepalive, credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Local-Day': today() },
+      body: JSON.stringify({ seconds: s })
+    });
+    if (r.ok) { me.usage = (await r.json()).usage; updateTimer(); } else pending += s;
+  } catch { pending += s; }
+}
+setInterval(() => {
+  if (!playing || !me) return;
+  pending++;
+  const u = me.usage;
+  if (u && u.remaining != null) {
+    u.remaining = Math.max(0, u.remaining - 1);
+    updateTimer();
+    if (u.remaining === 0) { flush(); closePlayer(); renderTimesUp(); return; }
+  }
+  if (pending >= 15) flush();
+}, 1000);
+document.addEventListener('visibilitychange', () => { if (document.hidden) flush(true); });
+
+/* ---------------- PIN pad ---------------- */
+function askPin(title = 'Parent PIN') {
+  return new Promise(resolve => {
+    const m = $('#pin'); let val = '', busy = false;
+    m.innerHTML = `<div class="pinbox"><h3>${esc(title)}</h3><div class="dots"></div>
+      <div class="pad">${[1,2,3,4,5,6,7,8,9,'✕',0,'⌫'].map(k => `<button data-k="${k}">${k}</button>`).join('')}</div>
+      <p class="pinerr"></p><button class="link" data-k="forgot">Forgot PIN?</button></div>`;
+    m.classList.remove('hidden');
+    const err = m.querySelector('.pinerr');
+    const dots = () => m.querySelector('.dots').textContent = '●'.repeat(val.length) + '○'.repeat(4 - val.length);
+    const done = ok => { m.classList.add('hidden'); m.onclick = null; resolve(ok); };
+    dots();
+    m.onclick = async e => {
+      const k = e.target.dataset && e.target.dataset.k;
+      if (k === undefined || busy) return;
+      if (k === '✕') return done(false);
+      if (k === 'forgot') {
+        err.innerHTML = 'Sign out, then sign in again with your Google account to set a new PIN.<br><button class="btn ghost" data-k="signout" style="margin-top:10px">Sign out</button>';
+        return;
+      }
+      if (k === 'signout') { lsSet(LS_FORGOT, '1'); done(false); return signOut(); }
+      if (k === '⌫') { val = val.slice(0, -1); return dots(); }
+      if (val.length < 4) { val += k; dots(); }
+      if (val.length === 4) {
+        busy = true;
+        try { const r = await api('/pin/verify', { method: 'POST', body: { pin: val } }); setUnlock(r.parentToken); done(true); }
+        catch (x) { err.textContent = x.message; val = ''; dots(); }
+        busy = false;
+      }
+    };
+  });
+}
+
+/* ---------------- Player ---------------- */
+let ytReady; const ytReadyP = new Promise(r => ytReady = r);
+window.onYouTubeIframeAPIReady = () => ytReady();
+(() => { const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s); })();
+
+let player = null;
+async function play(v) {
+  if (!v) return;
+  if (timeUp()) return renderTimesUp();
+  $('#pw').classList.remove('hidden');
+  $('#ptitle').textContent = v.title;
+  renderUpNext(v);
+  $('.upnext').scrollTop = 0;
+  await ytReadyP;
+  if (player && player.loadVideoById) { player.loadVideoById(v.id); return; }
+  player = new YT.Player('player', {
+    host: 'https://www.youtube-nocookie.com',
+    videoId: v.id,
+    playerVars: { autoplay: 1, rel: 0, playsinline: 1, iv_load_policy: 3, origin: location.origin },
+    events: {
+      onStateChange: e => {
+        playing = e.data === YT.PlayerState.PLAYING;
+        if (e.data === YT.PlayerState.ENDED) { closePlayer(); toast('All done! 🎉 Pick another video'); }
+      },
+      onError: () => { playing = false; closePlayer(); toast("That video can't play here 😕"); }
+    }
+  });
+}
+function closePlayer() {
+  playing = false;
+  try { player && player.stopVideo(); } catch {}
+  $('#pw').classList.add('hidden');
+  flush();
+}
+$('#closeP').onclick = closePlayer;
+function renderUpNext(cur) {
+  const rest = videos.filter(v => v.id !== cur.id);
+  const same = rest.filter(v => v.channelId === cur.channelId);
+  $('#upTitle').textContent = same.length ? 'More from ' + cur.channel : 'More videos';
+  $('#upGrid').innerHTML = (same.length ? same : rest).slice(0, 24).map(card).join('');
+}
+$('#upGrid').onclick = e => { const b = e.target.closest('[data-v]'); if (b) play(byId[b.dataset.v]); };
+
+/* ---------------- Screens ---------------- */
+const card = v => `<button class="card" data-v="${esc(v.id)}"><div class="th"><img loading="lazy" src="${esc(v.thumb)}" alt="">
+  <span class="dur">${fmt(v.secs)}</span></div><div class="t">${esc(v.title)}</div>
+  <div class="c">${esc(v.channel)} · ${ago(v.published)}</div></button>`;
+
+const LOGIN_ERRORS = {
+  csrf: 'Sign-in was interrupted — please try again.', token: 'Google sign-in could not be verified — please try again.',
+  email: 'Please use a Google account with a verified email.', rate: 'Too many sign-in attempts — wait a few minutes.'
+};
+let gsiLoading = null;
+function loadGsi() {
+  return gsiLoading ||= new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+    s.onload = res; s.onerror = () => rej(new Error('Could not load Google sign-in')); document.head.appendChild(s);
+  });
+}
+async function renderLogin(errCode) {
+  closePlayer();
+  me = null; parentToken = null;
+  app.innerHTML = `<div class="hero"><h1>Kids<span style="color:var(--accent)">Tube</span></h1>
+    <p>YouTube with only the channels <b>you</b> choose.<br>No search, no random recommendations, daily time limits.</p>
+    <div id="gbtn"></div><div class="note err" style="text-align:center">${esc(LOGIN_ERRORS[errCode] || '')}</div>
+    <p class="small">For parents. We only use your Google name and email to save your settings.
+    <a href="/privacy">Privacy policy</a></p></div>`;
+  try {
+    const [{ googleClientId }] = await Promise.all([api('/config'), loadGsi()]);
+    google.accounts.id.initialize({ client_id: googleClientId, ux_mode: 'redirect', login_uri: location.origin + '/api/auth/google' });
+    google.accounts.id.renderButton($('#gbtn'), { theme: 'filled_blue', size: 'large', shape: 'pill', text: 'signin_with' });
+  } catch (e) { $('#gbtn').innerHTML = `<div class="note err">${esc(e.message)}</div>`; }
+}
+async function signOut() {
+  closePlayer();
+  try { await api('/auth/logout', { method: 'POST' }); } catch {}
+  renderLogin();
+}
+
+function renderSetPin(first) {
+  app.innerHTML = `<div class="panel"><h1>${first ? 'Welcome, ' + esc(me.parent.name || 'parent') + ' 👋' : 'Set a new PIN'}</h1>
+    <div class="sec"><h3>${first ? 'Create a 4-digit parent PIN' : 'New 4-digit PIN'}</h3>
+      <p class="small">You'll need this PIN to change settings on your child's device. Keep it secret from the kids!</p>
+      <div class="row"><input class="in" id="p1" type="password" inputmode="numeric" maxlength="4" placeholder="PIN">
+      <input class="in" id="p2" type="password" inputmode="numeric" maxlength="4" placeholder="Repeat PIN"></div>
+      <button class="btn" id="go" style="margin-top:14px">Save PIN</button><div class="note" id="note"></div></div></div>`;
+  $('#go').onclick = async () => {
+    const p1 = $('#p1').value, p2 = $('#p2').value, note = $('#note');
+    note.className = 'note err';
+    if (!/^\d{4}$/.test(p1)) return note.textContent = 'PIN must be 4 digits';
+    if (p1 !== p2) return note.textContent = "PINs don't match";
+    try {
+      const r = await api('/pin', { method: 'POST', body: { pin: p1 } });
+      setUnlock(r.parentToken); lsSet(LS_FORGOT, null); me.hasPin = true;
+      renderParent();
+    } catch (e) { note.textContent = e.message; }
+  };
+}
+
+async function renderHome() {
+  closePlayer();
+  app.innerHTML = `<header><div class="top"><div class="logo">Kids<span>Tube</span></div><div class="spacer"></div>
+      <div class="timer hidden" id="timer"></div><button class="gear" id="gear" aria-label="Parent settings">⚙️</button></div>
+      <div class="chips" id="chips"></div></header>
+    <main><div class="grid" id="grid"></div><div class="msg" id="msg">Loading videos…</div></main>`;
+  $('#gear').onclick = async () => { if (await ensureUnlocked()) renderParent(); };
+  try {
+    me = await api('/me');
+    updateTimer();
+    if (timeUp()) return renderTimesUp();
+    if (!me.settings.channels.length) { $('#msg').textContent = 'No channels yet — a parent can add them with ⚙️'; return; }
+    const r = await api('/videos');
+    videos = r.videos; me.usage = r.usage; updateTimer();
+    byId = Object.fromEntries(videos.map(v => [v.id, v]));
+    drawHome();
+    if (r.failedChannels) toast(`${r.failedChannels} channel(s) couldn't load right now`);
+  } catch (e) {
+    if (e.status === 401) return;
+    $('#msg').className = 'msg err'; $('#msg').textContent = 'Could not load videos: ' + e.message;
+  }
+}
+function drawHome() {
+  const chips = $('#chips'), grid = $('#grid'), msg = $('#msg');
+  if (!chips) return;
+  if (filterCh !== 'all' && !me.channels.some(c => c.id === filterCh)) filterCh = 'all';
+  chips.innerHTML = `<button class="chip all ${filterCh === 'all' ? 'on' : ''}" data-ch="all">⭐ All</button>` +
+    me.channels.map(c => `<button class="chip ${filterCh === c.id ? 'on' : ''}" data-ch="${esc(c.id)}">
+      ${c.thumb ? `<img src="${esc(c.thumb)}" alt="">` : ''}${esc(c.title)}</button>`).join('');
+  chips.onclick = e => { const b = e.target.closest('[data-ch]'); if (b) { filterCh = b.dataset.ch; drawHome(); } };
+  const list = videos.filter(v => filterCh === 'all' || v.channelId === filterCh);
+  grid.innerHTML = list.map(card).join('');
+  grid.onclick = e => { const b = e.target.closest('[data-v]'); if (b) play(byId[b.dataset.v]); };
+  msg.className = 'msg'; msg.textContent = 'No videos here yet.';
+  msg.classList.toggle('hidden', list.length > 0);
+}
+// Pick up changes a parent makes from their own phone.
+setInterval(() => { if (!playing && me && $('#grid') && !document.hidden) renderHome(); }, 10 * 60 * 1000);
+
+function renderTimesUp() {
+  app.innerHTML = `<div class="panel" style="text-align:center"><div class="big">🌙</div>
+    <h1>Time's up for today!</h1><p class="small" style="font-size:16px">Come back tomorrow for more videos.</p>
+    <button class="btn ghost" id="more">Parent: add 15 minutes</button></div>`;
+  $('#more').onclick = async () => {
+    try { const r = await papi('/usage/bonus', { method: 'POST', body: { minutes: 15 } }); me.usage = r.usage; renderHome(); }
+    catch (e) { if (!e.cancelled) toast(e.message); }
+  };
+}
+
+function renderParent() {
+  closePlayer();
+  const s = me.settings;
+  let chans = me.channels.slice();
+  const u = me.usage || { seconds: 0 };
+  app.innerHTML = `<div class="panel">
+    <div class="row" style="margin-bottom:12px"><h1 style="margin:0;flex:1">Parent settings</h1><button class="btn" id="done">Save ✓</button></div>
+    <div class="sec"><h3>Approved channels</h3><div id="chanList"></div>
+      <label>Add a channel</label>
+      <div class="row"><input class="in" id="chIn" placeholder="@TechnoGamerzOfficial or channel link" autocapitalize="off" autocorrect="off">
+      <button class="btn" id="chAdd">Add</button></div>
+      <div class="note" id="chNote"></div>
+      <p class="small">On YouTube, open the channel → tap its name → copy the @handle, or use Share → Copy link.</p></div>
+    <div class="sec"><h3>Filters</h3>
+      <label>Hide videos whose title contains (comma separated)</label>
+      <input class="in" id="words" placeholder="e.g. GTA, horror, prank" value="${esc(s.blockWords.join(', '))}">
+      <label class="check"><input type="checkbox" id="shorts" ${s.hideShorts ? 'checked' : ''}> Hide Shorts &amp; clips under 3 min</label>
+      <label>Latest videos per channel</label>
+      <input class="in" id="per" type="number" min="5" max="50" value="${s.perChannel}"></div>
+    <div class="sec"><h3>Screen time</h3>
+      <label>Daily limit in minutes (0 = no limit)</label>
+      <input class="in" id="lim" type="number" min="0" max="600" value="${s.dailyLimit}">
+      <p class="small">Watched today: ${Math.floor(u.seconds / 60)} min</p>
+      <div class="row"><button class="btn ghost" id="bonus">+15 min today</button><button class="btn ghost" id="resetT">Reset today</button></div></div>
+    <div class="sec"><h3>Account</h3>
+      <div class="who">${me.parent.picture ? `<img src="${esc(me.parent.picture)}" alt="">` : ''}<div><b>${esc(me.parent.name)}</b><div class="small">${esc(me.parent.email)}</div></div></div>
+      <label>Change PIN</label>
+      <div class="row"><input class="in" id="np" type="password" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN"><button class="btn ghost" id="npGo">Change</button></div>
+      <div class="row" style="margin-top:14px"><button class="btn ghost" id="out">Sign out</button><button class="btn danger" id="del">Delete account</button></div>
+      <div class="note" id="accNote"></div></div>
+    <div class="note" id="note"></div></div>`;
+
+  const drawChans = () => {
+    $('#chanList').innerHTML = chans.length ? chans.map(c => `<div class="chan">
+      ${c.thumb ? `<img src="${esc(c.thumb)}" alt="">` : ''}<div class="n">${esc(c.title)}</div>
+      <button class="x" data-rm="${esc(c.id)}">Remove</button></div>`).join('') : '<p class="small">None yet — add your first channel below.</p>';
+  };
+  drawChans();
+  $('#chanList').onclick = e => { const b = e.target.closest('[data-rm]'); if (b) { chans = chans.filter(c => c.id !== b.dataset.rm); drawChans(); } };
+  $('#chAdd').onclick = async () => {
+    const n = $('#chNote'); n.className = 'note'; n.textContent = 'Looking up…';
+    try {
+      const c = await papi('/channels', { method: 'POST', body: { input: $('#chIn').value } });
+      if (chans.some(x => x.id === c.id)) { n.className = 'note err'; n.textContent = 'Already added'; return; }
+      chans.push(c); drawChans(); $('#chIn').value = '';
+      n.className = 'note ok'; n.textContent = 'Added ' + c.title + ' — tap Save when done';
+    } catch (e) { n.className = 'note err'; n.textContent = e.cancelled ? '' : e.message; }
+  };
+  $('#chIn').onkeydown = e => { if (e.key === 'Enter') $('#chAdd').click(); };
+  const usageAct = async (path, body) => {
+    try { const r = await papi(path, { method: 'POST', body }); me.usage = r.usage; toast('Updated'); }
+    catch (e) { if (!e.cancelled) toast(e.message); }
+  };
+  $('#bonus').onclick = () => usageAct('/usage/bonus', { minutes: 15 });
+  $('#resetT').onclick = () => usageAct('/usage/reset', {});
+  $('#npGo').onclick = async () => {
+    const n = $('#accNote'), pin = $('#np').value;
+    n.className = 'note err';
+    if (!/^\d{4}$/.test(pin)) return n.textContent = 'PIN must be 4 digits';
+    try { await ensureUnlocked(); const r = await api('/pin', { method: 'POST', body: { pin }, unlock: true }); setUnlock(r.parentToken); $('#np').value = ''; n.className = 'note ok'; n.textContent = 'PIN changed'; }
+    catch (e) { n.textContent = e.message; }
+  };
+  $('#out').onclick = signOut;
+  $('#del').onclick = async () => {
+    const n = $('#accNote');
+    if (!$('#del').dataset.sure) {
+      $('#del').dataset.sure = '1'; $('#del').textContent = 'Tap again to delete everything';
+      n.className = 'note err'; n.textContent = 'This deletes your settings and channel list permanently.'; return;
+    }
+    try { await papi('/account', { method: 'DELETE' }); renderLogin(); } catch (e) { if (!e.cancelled) { n.textContent = e.message; } }
+  };
+  $('#done').onclick = async () => {
+    const note = $('#note');
+    try {
+      const r = await papi('/settings', { method: 'PUT', body: {
+        channels: chans.map(c => c.id),
+        blockWords: $('#words').value.split(',').map(x => x.trim()).filter(Boolean),
+        hideShorts: $('#shorts').checked,
+        perChannel: parseInt($('#per').value) || 25,
+        dailyLimit: parseInt($('#lim').value) || 0
+      }});
+      me.settings = r.settings; me.channels = r.channels;
+      renderHome();
+    } catch (e) { if (!e.cancelled) { note.className = 'note err'; note.textContent = e.message; } }
+  };
+}
+
+/* ---------------- Start ---------------- */
+(async function start() {
+  const e = new URLSearchParams(location.search).get('e');
+  if (location.search) history.replaceState(null, '', '/');
+  try { me = await api('/me'); }
+  catch (x) {
+    if (x.status === 401) return renderLogin(e);
+    app.innerHTML = `<div class="msg err">Can't reach Kids Tube right now. Check your internet and reload.</div>`; return;
+  }
+  if (!me.hasPin || (lsGet(LS_FORGOT) && me.canResetPin)) return renderSetPin(!me.hasPin);
+  lsSet(LS_FORGOT, null);
+  renderHome();
+})();
+</script>
+</body>
+</html>
