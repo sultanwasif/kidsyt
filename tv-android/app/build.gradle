@@ -8,16 +8,16 @@ def ks = new Properties()
 if (ksFile.exists()) ksFile.withInputStream { ks.load(it) }
 
 android {
-    namespace 'com.ehfservices.kidstube.tv'
+    namespace 'com.ehfservices.hasslefreetv'
     compileSdk 36
 
     defaultConfig {
-        applicationId 'com.ehfservices.kidstube.tv'
+        applicationId 'com.ehfservices.hasslefreetv'
         minSdk 25            // Fire OS 6+ / Android 7.1+ (older TV web engines can't run the app)
         targetSdk 36
         versionCode 1
         versionName '1.0'
-        buildConfigField 'String', 'START_URL', '"https://kidsyt.ehfservices.com/tv-app"'
+        buildConfigField 'String', 'START_URL', '"https://tv.ehfservices.com/tv-app"'
     }
 
     buildFeatures {

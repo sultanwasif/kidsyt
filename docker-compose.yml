@@ -8,6 +8,7 @@ services:
       HOST: 0.0.0.0              # listen inside the container; the port below is still localhost-only on the VPS
       PORT: 3100
       DB_FILE: /app/data/kidsyt.db
+      CANONICAL_HOST: tv.ehfservices.com   # other domains (old kidsyt.ehfservices.com) redirect here
     ports:
       - "127.0.0.1:3100:3100"    # only nginx on the VPS can reach it
     volumes:

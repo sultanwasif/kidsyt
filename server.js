@@ -29,6 +29,13 @@ const oauth = new OAuth2Client(GOOGLE_CLIENT_ID);
 const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+// Old addresses (e.g. kidsyt.ehfservices.com) forward to the main one, keeping the path.
+const CANONICAL_HOST = process.env.CANONICAL_HOST;
+app.use((req, res, next) => {
+  const h = req.hostname || '';
+  if (!CANONICAL_HOST || !h || h === CANONICAL_HOST || /^(localhost|127\.|\[?::1)/.test(h)) return next();
+  res.redirect(req.method === 'GET' || req.method === 'HEAD' ? 301 : 308, `https://${CANONICAL_HOST}${req.originalUrl}`);
+});
 app.use(express.json({ limit: '32kb' }));
 app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 app.use(cookieParser());
@@ -38,7 +45,7 @@ app.use((req, res, next) => {
   next();
 });
 // Digital Asset Links for the Android (Play Store) app, so it opens full-screen without a browser bar.
-// .env: TWA_PACKAGE=com.ehfservices.kidstube  TWA_SHA256=AA:BB:...,CC:DD:...  (upload key + Play app-signing key)
+// .env: TWA_PACKAGE=com.ehfservices.hasslefreetv  TWA_SHA256=AA:BB:...,CC:DD:...  (upload key + Play app-signing key)
 app.get('/.well-known/assetlinks.json', (req, res) => {
   const pkg = process.env.TWA_PACKAGE, fps = (process.env.TWA_SHA256 || '').split(',').map(s => s.trim()).filter(Boolean);
   res.json(pkg && fps.length ? [{
@@ -47,10 +54,10 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
   }] : []);
 });
 app.use(express.static('public', { extensions: ['html'] }));
-// kidsyt.ehfservices.com/tv on a phone → the "Link a TV" screen (handled by index.html)
+// tv.ehfservices.com/tv on a phone → the "Link a TV" screen (handled by index.html)
 app.get('/tv', (req, res) => res.sendFile('index.html', { root: 'public' }));
 // Short link to type into the Fire TV "Downloader" app
-app.get('/apk', (req, res) => res.redirect('/downloads/kidstube-tv.apk'));
+app.get('/apk', (req, res) => res.redirect('/downloads/hasslefree-tv.apk'));
 
 /* ---------------- helpers ---------------- */
 const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
@@ -418,4 +425,4 @@ app.use((err, req, res, next) => {
   fail(res, 500, 'Server error');
 });
 
-app.listen(PORT, HOST, () => console.log(`Kids Tube listening on http://${HOST}:${PORT}`));
+app.listen(PORT, HOST, () => console.log(`Hassle Free TV listening on http://${HOST}:${PORT}`));

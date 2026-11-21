@@ -1,7 +1,7 @@
 {
   "name": "kidsyt",
   "version": "1.0.0",
-  "description": "Kids Tube — parent-approved YouTube channels only",
+  "description": "Hassle Free TV — parent-approved YouTube channels only",
   "type": "module",
   "main": "server.js",
   "scripts": {

@@ -1,4 +1,4 @@
-package com.ehfservices.kidstube.tv;
+package com.ehfservices.hasslefreetv;
 
 import android.app.Activity;
 import android.net.Uri;
@@ -15,8 +15,8 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 /**
- * Kids Tube for TV: a full-screen WebView showing https://kidsyt.ehfservices.com/tv-app.
- * Everything outside Kids Tube is blocked, so kids can't wander off to other websites.
+ * Hassle Free TV for Android TV / Google TV / Fire TV: a full-screen WebView showing https://tv.ehfservices.com/tv-app.
+ * Everything outside Hassle Free TV is blocked, so kids can't wander off to other websites.
  */
 public class MainActivity extends Activity {
 
@@ -25,7 +25,7 @@ public class MainActivity extends Activity {
         "<html><body style='margin:0;background:#1b1446;color:#fff;font-family:sans-serif;display:flex;"
         + "align-items:center;justify-content:center;height:100vh;text-align:center'>"
         + "<div><h1 style='font-size:5vw'>No internet connection</h1>"
-        + "<p style='font-size:2.4vw;color:#c9c3ff'>Kids Tube will try again in a few seconds&hellip;</p></div></body></html>";
+        + "<p style='font-size:2.4vw;color:#c9c3ff'>Hassle Free TV will try again in a few seconds&hellip;</p></div></body></html>";
 
     private WebView web;
     private String host;
@@ -44,13 +44,13 @@ public class MainActivity extends Activity {
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);       // videos start when picked with the remote
         s.setSupportMultipleWindows(false);                 // links that try to open a new window stay here (and get blocked)
-        s.setUserAgentString(s.getUserAgentString() + " KidsTubeTV/" + BuildConfig.VERSION_NAME);
+        s.setUserAgentString(s.getUserAgentString() + " HassleFreeTV/" + BuildConfig.VERSION_NAME);
 
         CookieManager cookies = CookieManager.getInstance();
         cookies.setAcceptCookie(true);
         cookies.setAcceptThirdPartyCookies(web, true);      // the YouTube player runs in an iframe
 
-        web.addJavascriptInterface(new Bridge(), "KidsTubeTV");
+        web.addJavascriptInterface(new Bridge(), "HassleFreeTV");
         web.setWebChromeClient(new WebChromeClient());
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -111,7 +111,7 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    /** Small bridge the page can call as window.KidsTubeTV.* */
+    /** Small bridge the page can call as window.HassleFreeTV.* */
     private class Bridge {
         @JavascriptInterface
         public void keepAwake(boolean on) {

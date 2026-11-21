@@ -1,5 +1,5 @@
 [Unit]
-Description=Kids Tube
+Description=Hassle Free TV
 After=network.target
 
 [Service]

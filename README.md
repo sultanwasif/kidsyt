@@ -1,4 +1,4 @@
-# Kids Tube — setup guide
+# Hassle Free TV — setup guide
 
 Parents sign in with Google, pick the YouTube channels their kids may watch, and set a PIN and a daily time limit.
 Kids see only those channels: no search, no YouTube recommendations.
@@ -7,7 +7,7 @@ Kids see only those channels: no search, no YouTube recommendations.
 Browser (kid's tablet / parent's phone)
    │  HTTPS
    ▼
-nginx (kidsyt.ehfservices.com) ──► Docker: Node (server.js, port 3100) ──► SQLite (data/kidsyt.db)
+nginx (tv.ehfservices.com) ──► Docker: Node (server.js, port 3100) ──► SQLite (data/kidsyt.db)
                                          │
                                          └─► YouTube Data API (your one key, never sent to browsers)
 ```
@@ -34,14 +34,14 @@ stays cached. Roughly 1 unit per channel per hour (10,000 free units/day).
 
 ### b) Google sign-in (OAuth client)
 1. **Google Auth Platform → Branding** (older consoles call it the *OAuth consent screen*):
-   app name "Kids Tube", support email, app home page `https://kidsyt.ehfservices.com`,
-   privacy policy `https://kidsyt.ehfservices.com/privacy`, authorized domain `ehfservices.com`.
+   app name "Hassle Free TV", support email, app home page `https://tv.ehfservices.com`,
+   privacy policy `https://tv.ehfservices.com/privacy`, authorized domain `ehfservices.com`.
    Skip the logo for now: uploading one triggers a brand review.
 2. **Audience** → User type **External** → **Publish app** (status *In production*). Only the basic
    `openid`, `email` and `profile` scopes are used, so no Google verification is needed.
 3. **Clients → Create client → Web application**
-   - Authorized JavaScript origins: `https://kidsyt.ehfservices.com`
-   - Authorized redirect URIs: `https://kidsyt.ehfservices.com/api/auth/google`
+   - Authorized JavaScript origins: `https://tv.ehfservices.com`
+   - Authorized redirect URIs: `https://tv.ehfservices.com/api/auth/google`
 4. Copy the **Client ID** → `GOOGLE_CLIENT_ID` in `.env`.
 
 ---
@@ -66,13 +66,13 @@ sudo docker compose ps                # should say "running"
 curl -s http://127.0.0.1:3100/api/config   # should print {"googleClientId":"..."}
 
 # nginx + HTTPS
-sudo cp deploy/nginx-kidsyt.conf /etc/nginx/sites-available/kidsyt
-sudo ln -s /etc/nginx/sites-available/kidsyt /etc/nginx/sites-enabled/
+sudo cp deploy/nginx-tv.conf /etc/nginx/sites-available/tv.ehfservices.com
+sudo ln -s /etc/nginx/sites-available/tv.ehfservices.com /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
-sudo certbot --nginx -d kidsyt.ehfservices.com
+sudo certbot --nginx -d tv.ehfservices.com
 ```
 
-Open `https://kidsyt.ehfservices.com` → **Sign in with Google** → create a PIN → add channels → **Save**.
+Open `https://tv.ehfservices.com` → **Sign in with Google** → create a PIN → add channels → **Save**.
 
 Logs: `cd /opt/kidsyt && sudo docker compose logs -f`
 Update: `cd /opt/kidsyt && sudo git pull && sudo docker compose up -d --build`
@@ -96,15 +96,15 @@ device picks up changes within 10 minutes or when the app is reopened.
 
 ## 4. TV app (Fire TV Stick, Android TV / Google TV)
 
-`tv-android/` is a tiny Android app (no libraries, ~40 KB) that opens `https://kidsyt.ehfservices.com/tv-app`
+`tv-android/` is a tiny Android app (no libraries, ~40 KB) that opens `https://tv.ehfservices.com/tv-app`
 full-screen, works with the remote (arrows, OK, Back, play/pause) and blocks every other website.
 
 **Install on a Fire TV Stick**
 1. Fire TV: Settings → My Fire TV → Developer options → *Install unknown apps* → allow **Downloader**
    (if Developer options is hidden: Settings → My Fire TV → About → click the device name 7 times).
-2. Install **Downloader** from the Fire TV app store, open it, type `kidsyt.ehfservices.com/apk` → Install.
-3. Open **Kids Tube**. The TV shows a code, e.g. `K7P-4QX`.
-4. On your phone open `kidsyt.ehfservices.com/tv`, sign in, enter the PIN and the code → the TV opens your videos.
+2. Install **Downloader** from the Fire TV app store, open it, type `tv.ehfservices.com/apk` → Install.
+3. Open **Hassle Free TV**. The TV shows a code, e.g. `K7P-4QX`.
+4. On your phone open `tv.ehfservices.com/tv`, sign in, enter the PIN and the code → the TV opens your videos.
 5. Lock the TV: Settings → Preferences → Parental Controls (PIN for other apps), or uninstall the YouTube app.
 
 Unlink a TV: ⚙️ on the TV → Unlink this TV (PIN), or on the phone: Parent settings → Sign out other devices.
@@ -114,7 +114,7 @@ Unlink a TV: ⚙️ on the TV → Unlink this TV (PIN), or on the phone: Parent 
 cd tv-android
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
 .\gradlew.bat assembleRelease
-copy app\build\outputs\apk\release\app-release.apk ..\public\downloads\kidstube-tv.apk
+copy app\build\outputs\apk\release\app-release.apk ..\public\downloads\hasslefree-tv.apk
 ```
 Bump `versionCode` in `tv-android/app/build.gradle` for each new APK. Release signing uses
 `tv-android/keystore.properties` + the `.jks` key in `%USERPROFILE%\.kidstube\` — **back both up**; without them
@@ -141,7 +141,8 @@ updates can't be installed over the old app. Artwork: `node tools/make-icons.mjs
 | Delete account (removes all of the parent's data) | `DELETE /api/account` |
 
 ## Before you invite other parents
-- Fill in `[DATE]` and `[CONTACT EMAIL]` in `public/privacy.html`.
+- Keep the date and contact email in `public/privacy.html` up to date when the policy changes.
+- The old address `kidsyt.ehfservices.com` redirects to `tv.ehfservices.com` (`CANONICAL_HOST` in `docker-compose.yml`).
 - Keep the app positioned as a **parent tool**: parents sign in and choose content; collect nothing from children.
 - The YouTube player is shown unmodified (no overlays), as YouTube's Required Minimum Functionality requires.
   Use Guided Access / App pinning to keep kids from leaving.

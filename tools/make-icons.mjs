@@ -1,4 +1,4 @@
-// Draws the Kids Tube artwork (cartoon TV with a star) and writes all PNGs — no image libraries needed.
+// Draws the Hassle Free TV artwork (cartoon TV with a star) and writes all PNGs — no image libraries needed.
 // Run from the repo root:  node tools/make-icons.mjs
 import zlib from 'node:zlib';
 import fs from 'node:fs';
@@ -51,7 +51,14 @@ const GLYPHS = {
   T: [[0, 0, 1, 0], [0.5, 0, 0.5, 1]],
   U: [[0, 0, 0, 1], [0, 1, 1, 1], [1, 1, 1, 0]],
   B: [[0, 0, 0, 1], [0, 0, 0.8, 0], [0.8, 0, 0.8, 0.5], [0, 0.5, 1, 0.5], [1, 0.5, 1, 1], [1, 1, 0, 1]],
-  E: [[0, 0, 0, 1], [0, 0, 1, 0], [0, 0.5, 0.8, 0.5], [0, 1, 1, 1]]
+  E: [[0, 0, 0, 1], [0, 0, 1, 0], [0, 0.5, 0.8, 0.5], [0, 1, 1, 1]],
+  H: [[0, 0, 0, 1], [1, 0, 1, 1], [0, 0.5, 1, 0.5]],
+  A: [[0, 1, 0.5, 0], [0.5, 0, 1, 1], [0.22, 0.6, 0.78, 0.6]],
+  L: [[0, 0, 0, 1], [0, 1, 1, 1]],
+  F: [[0, 0, 0, 1], [0, 0, 1, 0], [0, 0.5, 0.8, 0.5]],
+  R: [[0, 0, 0, 1], [0, 0, 0.85, 0], [0.85, 0, 0.85, 0.5], [0, 0.5, 0.85, 0.5], [0.35, 0.5, 1, 1]],
+  V: [[0, 0, 0.5, 1], [0.5, 1, 1, 0]],
+  ' ': []
 };
 function text(x, y, str, x0, y0, w, h, gap, stroke) {
   for (let i = 0; i < str.length; i++) {
@@ -68,10 +75,10 @@ function text(x, y, str, x0, y0, w, h, gap, stroke) {
 const iconPx = (W, H) => (px, py) => tv(px / W, py / H) || bg(py / H);
 const bannerPx = (W, H) => (px, py) => {
   const s = W / 320, x = px / s, y = py / s;                // design at 320×180
-  const ix = (x - 2) / 168, iy = (y - 6) / 168;              // icon on the left
+  const ix = (x - 4) / 142, iy = (y - 19) / 142;             // icon on the left
   if (ix >= 0 && ix <= 1 && iy >= 0 && iy <= 1) { const c = tv(ix, iy); if (c) return c; }
-  if (text(x, y, 'KIDS', 172, 40, 24, 44, 11, 4.6)) return WHITE;
-  if (text(x, y, 'TUBE', 172, 100, 24, 44, 11, 4.6)) return YEL;
+  if (text(x, y, 'HASSLE', 152, 46, 15.5, 38, 6, 3.8)) return WHITE;
+  if (text(x, y, 'FREE TV', 152, 100, 15.5, 38, 6, 3.8)) return YEL;
   return bg(py / H);
 };
 
