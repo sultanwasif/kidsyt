@@ -7,6 +7,9 @@
          Fire TV declares leanback too, so sideloading / Amazon Appstore still works. -->
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <!-- screenOrientation="landscape" implies this feature; some TVs don't report it, so don't require it. -->
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
 
     <application
         android:label="Hassle Free TV"
