@@ -47,6 +47,10 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
   }] : []);
 });
 app.use(express.static('public', { extensions: ['html'] }));
+// kidsyt.ehfservices.com/tv on a phone → the "Link a TV" screen (handled by index.html)
+app.get('/tv', (req, res) => res.sendFile('index.html', { root: 'public' }));
+// Short link to type into the Fire TV "Downloader" app
+app.get('/apk', (req, res) => res.redirect('/downloads/kidstube-tv.apk'));
 
 /* ---------------- helpers ---------------- */
 const sha256 = s => crypto.createHash('sha256').update(s).digest('hex');
@@ -138,15 +142,70 @@ app.post('/api/auth/google', wrap(async (req, res) => {
     ON CONFLICT(google_sub) DO UPDATE SET email = excluded.email, name = excluded.name, picture = excluded.picture`)
     .run(payload.sub, payload.email || '', payload.name || '', payload.picture || '', now());
   const parent = db.prepare('SELECT id FROM parents WHERE google_sub = ?').get(payload.sub);
+  startSession(res, parent.id);
+  res.redirect('/');
+}));
 
+function startSession(res, parentId) {
   const token = crypto.randomBytes(32).toString('base64url');
   db.prepare('INSERT INTO sessions (token_hash, parent_id, created_at, expires_at) VALUES (?, ?, ?, ?)')
-    .run(sha256(token), parent.id, now(), now() + SESSION_DAYS * 86400000);
+    .run(sha256(token), parentId, now(), now() + SESSION_DAYS * 86400000);
   res.cookie(SESSION_COOKIE, token, {
     httpOnly: true, secure: secureCookie, sameSite: 'lax', maxAge: SESSION_DAYS * 86400000, path: '/'
   });
-  res.redirect('/');
-}));
+}
+
+/* ---------------- TV sign-in with a code ----------------
+ * TV:    POST /api/tv/start  → { code: "K7P-4QX", device }      (shows the code)
+ *        GET  /api/tv/poll?device=…  every few seconds           (gets the session cookie once approved)
+ * Phone: POST /api/tv/approve { code }  — signed-in parent, PIN-unlocked
+ */
+const TV_CODE_MS = 10 * 60 * 1000;
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';          // no 0/O, 1/I/L
+const pairings = new Map();                                     // device → { code, exp, parentId }
+const pairingByCode = new Map();                                // code → device
+setInterval(() => {
+  const t = now();
+  for (const [d, p] of pairings) if (p.exp < t) { pairings.delete(d); pairingByCode.delete(p.code); }
+}, 60000).unref();
+const normCode = c => String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+app.post('/api/tv/start', (req, res) => {
+  if (!rateLimit('tvstart:' + req.ip, 30, 10 * 60000)) return fail(res, 429, 'Too many codes — wait a few minutes');
+  let code;
+  do code = Array.from(crypto.randomBytes(6), b => CODE_CHARS[b % CODE_CHARS.length]).join('');
+  while (pairingByCode.has(code));
+  const device = crypto.randomBytes(24).toString('base64url');
+  pairings.set(device, { code, exp: now() + TV_CODE_MS, parentId: null });
+  pairingByCode.set(code, device);
+  res.json({ code: code.slice(0, 3) + '-' + code.slice(3), device, expiresIn: TV_CODE_MS / 1000 });
+});
+
+app.get('/api/tv/poll', (req, res) => {
+  const device = String(req.query.device || '');
+  if (!rateLimit('tvpoll:' + device, 400, 10 * 60000)) return fail(res, 429, 'Slow down');
+  const p = pairings.get(device);
+  if (!p || p.exp < now()) return res.status(410).json({ status: 'expired' });
+  if (!p.parentId) return res.json({ status: 'pending' });
+  pairings.delete(device); pairingByCode.delete(p.code);
+  startSession(res, p.parentId);
+  res.json({ status: 'ok' });
+});
+
+app.post('/api/tv/approve', auth, requireUnlock, (req, res) => {
+  if (!rateLimit('tvapprove:' + req.parent.id, 10, 10 * 60000)) return fail(res, 429, 'Too many tries — wait a few minutes');
+  const device = pairingByCode.get(normCode(req.body?.code));
+  const p = device && pairings.get(device);
+  if (!p || p.exp < now()) return fail(res, 404, 'Code not found or expired — check the TV for a new code');
+  p.parentId = req.parent.id;
+  res.json({ ok: true });
+});
+
+// Sign out every other device (TVs, tablets) — keeps this one signed in.
+app.post('/api/auth/logout-others', auth, requireUnlock, (req, res) => {
+  const r = db.prepare('DELETE FROM sessions WHERE parent_id = ? AND token_hash != ?').run(req.parent.id, req.parent.token_hash);
+  res.json({ ok: true, removed: r.changes });
+});
 
 app.post('/api/auth/logout', auth, (req, res) => {
   db.prepare('DELETE FROM sessions WHERE token_hash = ?').run(req.parent.token_hash);

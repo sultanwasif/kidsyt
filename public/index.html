@@ -120,6 +120,7 @@ const app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const today = () => new Date().toLocaleDateString('en-CA');
 const LS_FORGOT = 'kyt.forgotPin';
+const LS_NEXT = 'kyt.next';            // remembers "/tv" across the Google sign-in redirect
 const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
 
@@ -309,6 +310,7 @@ function loadGsi() {
 async function renderLogin(errCode) {
   closePlayer();
   me = null; parentToken = null;
+  if (location.pathname === '/tv') lsSet(LS_NEXT, 'tv');
   app.innerHTML = `<div class="hero"><h1>Kids<span style="color:var(--accent)">Tube</span></h1>
     <p>YouTube with only the channels <b>you</b> choose.<br>No search, no random recommendations, daily time limits.</p>
     <div id="gbtn"></div><div class="note err" style="text-align:center">${esc(LOGIN_ERRORS[errCode] || '')}</div>
@@ -407,6 +409,29 @@ setInterval(() => {
   if (!playing && me && $('#grid') && !document.hidden && document.activeElement?.id !== 'q') renderHome();
 }, 10 * 60 * 1000);
 
+function renderLinkTv() {
+  closePlayer();
+  app.innerHTML = `<div class="panel">
+    <div class="row" style="margin-bottom:12px"><h1 style="margin:0;flex:1">📺 Link a TV</h1><button class="btn ghost" id="back">Done</button></div>
+    <div class="sec"><p class="small" style="font-size:16px">Open the <b>Kids Tube</b> app on the TV. It shows a code like <b>K7P-4QX</b>. Type it here:</p>
+      <div class="row"><input class="in" id="code" placeholder="K7P-4QX" maxlength="8" autocapitalize="characters" autocorrect="off"
+        autocomplete="off" style="font-size:26px;letter-spacing:4px;text-transform:uppercase">
+      <button class="btn" id="go">Link TV</button></div>
+      <div class="note" id="note"></div>
+      <p class="small">The TV will use your channels, playlists, filters and time limit. To unlink TVs later:
+      ⚙️ Parent settings → Sign out other devices.</p></div></div>`;
+  $('#back').onclick = renderHome;
+  $('#go').onclick = async () => {
+    const n = $('#note'); n.className = 'note'; n.textContent = 'Linking…';
+    try {
+      await papi('/tv/approve', { method: 'POST', body: { code: $('#code').value } });
+      n.className = 'note ok'; n.textContent = '✓ TV linked! It will open Kids Tube in a few seconds.'; $('#code').value = '';
+    } catch (e) { n.className = 'note err'; n.textContent = e.cancelled ? '' : e.message; }
+  };
+  $('#code').onkeydown = e => { if (e.key === 'Enter') $('#go').click(); };
+  $('#code').focus();
+}
+
 function renderTimesUp() {
   app.innerHTML = `<div class="panel" style="text-align:center"><div class="big">🌙</div>
     <h1>Time's up for today!</h1><p class="small" style="font-size:16px">Come back tomorrow for more videos.</p>
@@ -462,7 +487,9 @@ function renderParent() {
       <div class="who">${me.parent.picture ? `<img src="${esc(me.parent.picture)}" alt="">` : ''}<div><b>${esc(me.parent.name)}</b><div class="small">${esc(me.parent.email)}</div></div></div>
       <label>Change PIN</label>
       <div class="row"><input class="in" id="np" type="password" inputmode="numeric" maxlength="4" placeholder="New 4-digit PIN"><button class="btn ghost" id="npGo">Change</button></div>
-      <div class="row" style="margin-top:14px"><button class="btn ghost" id="out">Sign out</button><button class="btn danger" id="del">Delete account</button></div>
+      <div class="row" style="margin-top:14px"><button class="btn ghost" id="linkTv">📺 Link a TV</button>
+        <button class="btn ghost" id="outOthers">Sign out other devices</button></div>
+      <div class="row" style="margin-top:10px"><button class="btn ghost" id="out">Sign out</button><button class="btn danger" id="del">Delete account</button></div>
       <div class="note" id="accNote"></div></div>
     <div class="note" id="note"></div></div>`;
 
@@ -547,6 +574,15 @@ function renderParent() {
     catch (e) { n.textContent = e.message; }
   };
   $('#out').onclick = signOut;
+  $('#linkTv').onclick = renderLinkTv;
+  $('#outOthers').onclick = async () => {
+    const n = $('#accNote'), b = $('#outOthers');
+    if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Tap again to confirm'; n.className = 'note';
+      n.textContent = 'TVs, tablets and other phones signed in to your account will need to sign in again.'; return; }
+    try { const r = await papi('/auth/logout-others', { method: 'POST' }); n.className = 'note ok';
+      n.textContent = `Signed out ${r.removed} other device(s).`; b.dataset.sure = ''; b.textContent = 'Sign out other devices'; }
+    catch (e) { if (!e.cancelled) { n.className = 'note err'; n.textContent = e.message; } }
+  };
   $('#del').onclick = async () => {
     const n = $('#accNote');
     if (!$('#del').dataset.sure) {
@@ -584,6 +620,10 @@ function renderParent() {
   }
   if (!me.hasPin || (lsGet(LS_FORGOT) && me.canResetPin)) return renderSetPin(!me.hasPin);
   lsSet(LS_FORGOT, null);
+  if (location.pathname === '/tv' || lsGet(LS_NEXT) === 'tv') {
+    lsSet(LS_NEXT, null); history.replaceState(null, '', '/');
+    return renderLinkTv();
+  }
   renderHome();
 })();
 </script>

@@ -94,6 +94,34 @@ device picks up changes within 10 minutes or when the app is reopened.
 
 ---
 
+## 4. TV app (Fire TV Stick, Android TV / Google TV)
+
+`tv-android/` is a tiny Android app (no libraries, ~40 KB) that opens `https://kidsyt.ehfservices.com/tv-app`
+full-screen, works with the remote (arrows, OK, Back, play/pause) and blocks every other website.
+
+**Install on a Fire TV Stick**
+1. Fire TV: Settings → My Fire TV → Developer options → *Install unknown apps* → allow **Downloader**
+   (if Developer options is hidden: Settings → My Fire TV → About → click the device name 7 times).
+2. Install **Downloader** from the Fire TV app store, open it, type `kidsyt.ehfservices.com/apk` → Install.
+3. Open **Kids Tube**. The TV shows a code, e.g. `K7P-4QX`.
+4. On your phone open `kidsyt.ehfservices.com/tv`, sign in, enter the PIN and the code → the TV opens your videos.
+5. Lock the TV: Settings → Preferences → Parental Controls (PIN for other apps), or uninstall the YouTube app.
+
+Unlink a TV: ⚙️ on the TV → Unlink this TV (PIN), or on the phone: Parent settings → Sign out other devices.
+
+**Build a new APK** (Windows, Android Studio installed):
+```powershell
+cd tv-android
+$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
+.\gradlew.bat assembleRelease
+copy app\build\outputs\apk\release\app-release.apk ..\public\downloads\kidstube-tv.apk
+```
+Bump `versionCode` in `tv-android/app/build.gradle` for each new APK. Release signing uses
+`tv-android/keystore.properties` + the `.jks` key in `%USERPROFILE%\.kidstube\` — **back both up**; without them
+updates can't be installed over the old app. Artwork: `node tools/make-icons.mjs`.
+
+---
+
 ## How it works
 
 | Feature | Where |

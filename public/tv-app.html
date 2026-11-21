@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Kids Tube TV</title>
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<style>
+  /* Sized in rem; 1rem = 1.25vw, so the layout is the same on 720p, 1080p and 4K TVs. */
+  :root{--bg:#1b1446;--bg2:#2a1f6b;--card:#ffffff14;--text:#fff;--muted:#c9c3ff;--accent:#ffcc33;--ok:#3ddc97}
+  html{font-size:1.25vw;background:var(--bg2)}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:linear-gradient(160deg,var(--bg),var(--bg2));overflow-x:hidden}
+  button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+  .hidden{display:none!important}
+  /* TV-safe margins (old TVs crop the edges) */
+  .wrap{padding:2.4rem 4rem 4rem}
+  header{display:flex;align-items:center;gap:1.4rem;margin-bottom:1.2rem}
+  .logo{font-size:2.4rem;font-weight:800}.logo span{color:var(--accent)}
+  .spacer{flex:1}
+  .timer{background:#ffffff1f;border-radius:999px;padding:.5rem 1.2rem;font-size:1.3rem;font-weight:700}
+  .menu{font-size:1.6rem;padding:.4rem .8rem;border-radius:999px;opacity:.6}
+  .chips{display:flex;gap:1rem;overflow-x:auto;padding:.6rem .4rem 1rem;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{display:flex;align-items:center;gap:.7rem;flex:none;max-width:22rem;background:var(--card);border:.2rem solid transparent;
+    border-radius:999px;padding:.5rem 1.3rem .5rem .5rem;font-weight:700;font-size:1.3rem}
+  .chip.txt{padding:.7rem 1.4rem}
+  .chip img{width:2.4rem;height:2.4rem;border-radius:50%;object-fit:cover}
+  .chip img.sq{border-radius:.5rem;width:3.4rem}
+  .chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chip.on{border-color:var(--accent);background:#ffcc3326}
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem 1.6rem;padding:.4rem}
+  .card{display:block;text-align:left;border-radius:1.1rem;padding:.4rem;transition:transform .12s}
+  .th{position:relative;aspect-ratio:16/9;border-radius:.9rem;overflow:hidden;background:#0003}
+  .th img{width:100%;height:100%;object-fit:cover;display:block}
+  .dur{position:absolute;right:.6rem;bottom:.6rem;background:#000c;border-radius:.4rem;padding:.1rem .5rem;font-size:1rem;font-weight:700}
+  .t{margin-top:.6rem;font-weight:700;font-size:1.25rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .c{margin-top:.3rem;color:var(--muted);font-size:1rem}
+  /* Focus: what the remote is pointing at */
+  .f:focus{outline:none}
+  .card:focus{transform:scale(1.06);background:#ffffff1a;box-shadow:0 0 0 .3rem var(--accent)}
+  .chip:focus,.menu:focus,.btn:focus,.key:focus{box-shadow:0 0 0 .3rem var(--accent);opacity:1}
+  .msg{text-align:center;color:var(--muted);padding:6rem 2rem;font-size:1.8rem}
+  .center{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4rem}
+  .center h1{font-size:3.2rem;margin:.4rem 0}
+  .center p{font-size:1.6rem;color:var(--muted);line-height:1.5;margin:.6rem 0}
+  .code{font-size:6rem;font-weight:800;letter-spacing:.6rem;color:var(--accent);margin:1.6rem 0;font-variant-numeric:tabular-nums}
+  .url{color:#fff;font-weight:800}
+  .btn{background:var(--accent);color:#222;font-weight:800;border-radius:1rem;padding:1rem 2rem;font-size:1.4rem;margin:.6rem}
+  .btn.ghost{background:#ffffff1f;color:#fff}
+  /* Player */
+  #pw{position:fixed;inset:0;background:#000;z-index:20}
+  #player{position:absolute;inset:0;width:100%;height:100%;border:0}
+  #pbar{position:absolute;left:0;right:0;top:0;padding:1.6rem 4rem;background:linear-gradient(#000c,#0000);font-size:1.6rem;
+    font-weight:700;transition:opacity .4s;pointer-events:none}
+  #pbar small{display:block;font-size:1.1rem;color:#ddd;font-weight:400;margin-top:.4rem}
+  #psink{position:absolute;width:1px;height:1px;opacity:0}
+  #toast{position:fixed;left:50%;bottom:3rem;transform:translateX(-50%);background:var(--accent);color:#222;font-weight:800;
+    padding:1rem 2rem;border-radius:999px;z-index:40;font-size:1.4rem}
+  /* PIN pad */
+  #pin{position:fixed;inset:0;z-index:30;background:#000c;display:flex;align-items:center;justify-content:center}
+  .pinbox{background:var(--bg2);border-radius:2rem;padding:2rem 2.4rem;text-align:center;width:28rem}
+  .pinbox h3{margin:0 0 1rem;font-size:1.8rem}
+  .dots{font-size:2.6rem;letter-spacing:1rem;margin-bottom:1.2rem}
+  .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem}
+  .key{background:#ffffff1f;border-radius:1rem;font-size:2rem;font-weight:700;padding:.8rem 0}
+  .pinerr{color:#ffb3b3;min-height:1.6rem;margin:.8rem 0 0;font-size:1.2rem}
+</style>
+</head>
+<body>
+<div id="app"><div class="msg">Loading…</div></div>
+
+<div id="pw" class="hidden"><div id="player"></div>
+  <div id="pbar"><span id="ptitle"></span><small>OK = pause / play · ◀ ▶ = skip 10 s · Back = choose another video</small></div>
+  <button id="psink" class="f" aria-hidden="true"></button></div>
+<div id="pin" class="hidden"></div>
+<div id="toast" class="hidden"></div>
+
+<script>
+// Very old TV web engines can't run the app; say so instead of showing a blank screen.
+try { new Function('var a={}; return a?.b ?? 1'); } catch (e) {
+  document.getElementById('app').innerHTML = '<div class="center"><h1>Update needed</h1><p>This TV\'s web engine is too old for Kids Tube.' +
+    '<br>Update the device software (Settings → My Fire TV → About → Check for updates) and try again.</p></div>';
+}
+</script>
+<script>
+/* Kids Tube — TV version (Fire TV / Android TV app, or any TV browser). Uses the same /api as the phone app. */
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const today = () => new Date().toLocaleDateString('en-CA');
+const native = window.KidsTubeTV || null;          // bridge from the Android TV app (optional)
+const SITE = location.host;
+
+let me = null, videos = [], byId = {}, filterCh = 'all', parentToken = null;
+
+async function api(path, { method = 'GET', body, unlock } = {}) {
+  const headers = { 'X-Local-Day': today() };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (unlock && parentToken) headers['X-Parent-Token'] = parentToken;
+  const r = await fetch('/api' + path, { method, headers, body: body !== undefined ? JSON.stringify(body) : undefined, credentials: 'same-origin' });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    const e = new Error(j.error || 'Error ' + r.status); e.status = r.status; e.body = j;
+    if (r.status === 401 && me) renderPair();
+    throw e;
+  }
+  return j;
+}
+const fmt = s => { const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${x}` : `${m}:${x}`; };
+function ago(iso) {
+  const d = (Date.now() - new Date(iso)) / 86400000;
+  if (d < 1) return 'today'; if (d < 2) return 'yesterday'; if (d < 30) return Math.floor(d) + ' days ago';
+  if (d < 365) return Math.floor(d / 30) + ' mo ago'; return Math.floor(d / 365) + ' yr ago';
+}
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+/* ---------------- Remote control: arrow-key focus movement ---------------- */
+const visible = e => e.offsetParent !== null || e.id === 'psink';
+function focusables() {
+  const layer = !$('#pin').classList.contains('hidden') ? $('#pin') : !$('#pw').classList.contains('hidden') ? $('#pw') : app;
+  return [...layer.querySelectorAll('.f')].filter(visible);
+}
+function focusEl(e) {
+  if (!e) return;
+  e.focus({ preventScroll: true });
+  e.scrollIntoView({ block: e.classList.contains('card') ? 'center' : 'nearest', inline: 'nearest' });
+  if (e.classList.contains('chip') || e.closest('header')) window.scrollTo({ top: 0 });
+}
+function move(dir) {
+  const els = focusables(), cur = document.activeElement;
+  if (!els.includes(cur)) return focusEl(els[0]);
+  const r = cur.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  let best = null, bestScore = Infinity;
+  for (const e of els) {
+    if (e === cur) continue;
+    const q = e.getBoundingClientRect(), x = q.left + q.width / 2, y = q.top + q.height / 2;
+    let main, cross;
+    if (dir === 'left' || dir === 'right') {
+      if (q.bottom <= r.top + 2 || q.top >= r.bottom - 2) continue;            // same row only
+      main = dir === 'left' ? cx - x : x - cx; cross = Math.abs(y - cy);
+    } else {
+      main = dir === 'up' ? r.top - q.bottom : q.top - r.bottom; cross = Math.abs(x - cx);
+      if (main < -2) continue;
+    }
+    if (main <= 0 && (dir === 'left' || dir === 'right')) continue;
+    const score = main + cross * 2;
+    if (score < bestScore) { bestScore = score; best = e; }
+  }
+  if (best) focusEl(best);
+}
+const DIRS = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+document.addEventListener('keydown', e => {
+  const k = e.key;
+  if (!$('#pw').classList.contains('hidden')) return playerKey(e);
+  if (DIRS[k]) { e.preventDefault(); move(DIRS[k]); return; }
+  if (k === 'Escape' || k === 'GoBack' || k === 'BrowserBack' || k === 'Backspace') { if (kytBack()) e.preventDefault(); }
+});
+// Called by the Android TV app when Back is pressed. Returns true if handled; false lets the app exit.
+window.kytBack = function () {
+  if (!$('#pin').classList.contains('hidden')) { pinCancel?.(); return true; }
+  if (!$('#pw').classList.contains('hidden')) { closePlayer(); return true; }
+  if (me && filterCh !== 'all' && $('#grid')) { filterCh = 'all'; drawHome(true); return true; }
+  return false;
+};
+
+/* ---------------- Screen time ---------------- */
+let playing = false, pending = 0, curVid = null;
+const timeUp = () => me && me.usage && me.usage.remaining === 0;
+function timerText() { const r = me?.usage?.remaining; return r == null ? '' : '⏱ ' + Math.ceil(r / 60) + ' min left'; }
+function updateTimer() { const t = $('#timer'); if (t) { t.textContent = timerText(); t.classList.toggle('hidden', !timerText()); } }
+async function flush() {
+  if (!pending) return;
+  const s = pending; pending = 0;
+  const v = curVid && { id: curVid.id, title: curVid.title, channel: curVid.channel, thumb: curVid.thumb };
+  try {
+    const r = await fetch('/api/usage/tick', { method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'X-Local-Day': today() }, body: JSON.stringify({ seconds: s, video: v }) });
+    if (r.ok) { me.usage = (await r.json()).usage; updateTimer(); } else pending += s;
+  } catch { pending += s; }
+}
+setInterval(() => {
+  if (!playing || !me) return;
+  pending++;
+  const u = me.usage;
+  if (u && u.remaining != null) {
+    u.remaining = Math.max(0, u.remaining - 1);
+    if (u.remaining === 0) { flush(); closePlayer(); renderTimesUp(); return; }
+  }
+  if (pending >= 15) flush();
+}, 1000);
+
+/* ---------------- Player ---------------- */
+let ytReady; const ytReadyP = new Promise(r => ytReady = r);
+window.onYouTubeIframeAPIReady = () => ytReady();
+(() => { const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s); })();
+let player = null, barTimer = null;
+function showBar() {
+  $('#pbar').style.opacity = 1; clearTimeout(barTimer);
+  barTimer = setTimeout(() => { if (playing) $('#pbar').style.opacity = 0; }, 4000);
+}
+async function play(v) {
+  if (!v) return;
+  if (timeUp()) return renderTimesUp();
+  flush(); curVid = v;
+  $('#pw').classList.remove('hidden');
+  $('#ptitle').textContent = v.title; showBar();
+  $('#psink').focus();
+  await ytReadyP;
+  if (player && player.loadVideoById) { player.loadVideoById(v.id); return; }
+  player = new YT.Player('player', {
+    host: 'https://www.youtube-nocookie.com', videoId: v.id,
+    playerVars: { autoplay: 1, rel: 0, playsinline: 1, iv_load_policy: 3, fs: 0, origin: location.origin },
+    events: {
+      onReady: () => $('#psink').focus(),
+      onStateChange: e => {
+        playing = e.data === YT.PlayerState.PLAYING;
+        native?.keepAwake?.(playing);
+        showBar();
+        $('#psink').focus();                        // keep the remote talking to us, not the iframe
+        if (e.data === YT.PlayerState.ENDED) { closePlayer(); toast('All done! 🎉 Pick another video'); }
+      },
+      onError: () => { playing = false; closePlayer(); toast("That video can't play here 😕"); }
+    }
+  });
+}
+function playerKey(e) {
+  const k = e.key; e.preventDefault(); showBar();
+  if (!player || !player.getPlayerState) return;
+  if (k === 'Enter' || k === ' ' || k === 'MediaPlayPause' || k === 'MediaPlay' || k === 'MediaPause') {
+    player.getPlayerState() === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
+  } else if (k === 'ArrowRight' || k === 'MediaFastForward') {
+    player.seekTo(player.getCurrentTime() + 10, true);
+  } else if (k === 'ArrowLeft' || k === 'MediaRewind') {
+    player.seekTo(Math.max(0, player.getCurrentTime() - 10), true);
+  } else if (k === 'Escape' || k === 'GoBack' || k === 'BrowserBack' || k === 'Backspace') {
+    closePlayer();
+  }
+}
+// Called by the Android TV app when it goes to the background (Home button, screensaver).
+window.kytPause = function () { try { if (player && playing) player.pauseVideo(); } catch {} flush(); };
+document.addEventListener('visibilitychange', () => { if (document.hidden) window.kytPause(); });
+
+let lastCard = null;
+function closePlayer() {
+  playing = false; native?.keepAwake?.(false);
+  try { player && player.stopVideo(); } catch {}
+  $('#pw').classList.add('hidden');
+  flush();
+  if (lastCard && document.body.contains(lastCard)) focusEl(lastCard); else focusEl(focusables()[0]);
+}
+
+/* ---------------- PIN pad (for parent actions on the TV) ---------------- */
+let pinCancel = null;
+function askPin(title) {
+  return new Promise(resolve => {
+    const m = $('#pin'); let val = '';
+    const keys = [1, 2, 3, 4, 5, 6, 7, 8, 9, '✕', 0, '⌫'];
+    m.innerHTML = `<div class="pinbox"><h3>${esc(title)}</h3><div class="dots"></div>
+      <div class="pad">${keys.map(k => `<button class="key f" data-k="${k}">${k}</button>`).join('')}</div><p class="pinerr"></p></div>`;
+    m.classList.remove('hidden');
+    const back = document.activeElement;
+    const dots = () => m.querySelector('.dots').textContent = '●'.repeat(val.length) + '○'.repeat(4 - val.length);
+    const done = ok => { m.classList.add('hidden'); pinCancel = null; focusEl(back); resolve(ok); };
+    pinCancel = () => done(false);
+    dots(); focusEl(m.querySelector('[data-k="5"]'));
+    m.onclick = async e => {
+      const k = e.target.dataset && e.target.dataset.k;
+      if (k === undefined) return;
+      if (k === '✕') return done(false);
+      if (k === '⌫') { val = val.slice(0, -1); return dots(); }
+      if (val.length < 4) { val += k; dots(); }
+      if (val.length === 4) {
+        try { const r = await api('/pin/verify', { method: 'POST', body: { pin: val } }); parentToken = r.parentToken; done(true); }
+        catch (x) { m.querySelector('.pinerr').textContent = x.message; val = ''; dots(); }
+      }
+    };
+  });
+}
+// Number keys on remotes that have them
+document.addEventListener('keydown', e => {
+  if ($('#pin').classList.contains('hidden') || !/^[0-9]$/.test(e.key)) return;
+  $('#pin').querySelector(`[data-k="${e.key}"]`)?.click();
+});
+
+/* ---------------- Screens ---------------- */
+const card = v => `<button class="card f" data-v="${esc(v.id)}"><div class="th"><img loading="lazy" src="${esc(v.thumb)}" alt="">
+  <span class="dur">${fmt(v.secs)}</span></div><div class="t">${esc(v.title)}</div>
+  <div class="c">${esc(v.channel)} · ${ago(v.published)}</div></button>`;
+
+// Sign in by code: the parent approves it on their phone.
+let pairTimer = null;
+async function renderPair() {
+  me = null; clearTimeout(pairTimer);
+  app.innerHTML = `<div class="center"><div class="logo" style="font-size:3rem">Kids<span>Tube</span></div>
+    <h1>Link this TV</h1>
+    <p>On your phone, go to <span class="url">${esc(SITE)}/tv</span><br>sign in, and enter this code:</p>
+    <div class="code" id="code">······</div><p id="pairMsg" style="font-size:1.2rem"></p></div>`;
+  let pairing;
+  try { pairing = await api('/tv/start', { method: 'POST' }); }
+  catch (e) { $('#pairMsg').textContent = 'Could not get a code: ' + e.message + ' — retrying…'; pairTimer = setTimeout(renderPair, 10000); return; }
+  $('#code').textContent = pairing.code;
+  const until = Date.now() + pairing.expiresIn * 1000;
+  const poll = async () => {
+    if (Date.now() > until) return renderPair();                              // new code
+    try {
+      const r = await fetch('/api/tv/poll?device=' + encodeURIComponent(pairing.device), { credentials: 'same-origin' });
+      const j = await r.json().catch(() => ({}));
+      if (j.status === 'ok') { native?.saveCookies?.(); return start(); }
+      if (r.status === 410) return renderPair();
+    } catch {}
+    pairTimer = setTimeout(poll, 3000);
+  };
+  pairTimer = setTimeout(poll, 3000);
+}
+
+async function renderHome() {
+  closePlayer();
+  app.innerHTML = `<div class="wrap"><header><div class="logo">Kids<span>Tube</span></div><div class="spacer"></div>
+      <div class="timer hidden" id="timer"></div><button class="menu f" id="menu" aria-label="Parent menu">⚙️</button></header>
+    <div class="chips" id="chips"></div><div class="grid" id="grid"></div><div class="msg" id="msg">Loading videos…</div></div>`;
+  $('#menu').onclick = renderMenu;
+  try {
+    me = await api('/me');
+    updateTimer();
+    if (timeUp()) return renderTimesUp();
+    if (!me.channels.length && !me.playlists.length && !me.picks.length) {
+      $('#msg').textContent = `No videos yet — add channels on your phone at ${SITE}`; focusEl($('#menu')); return;
+    }
+    const r = await api('/videos');
+    videos = r.videos; me.usage = r.usage; updateTimer();
+    byId = Object.fromEntries(videos.map(v => [v.id, v]));
+    drawHome(true);
+  } catch (e) {
+    if (e.status === 401) return;
+    $('#msg').textContent = 'Could not load videos: ' + e.message; focusEl($('#menu'));
+  }
+}
+function drawHome(focusFirst) {
+  const chips = $('#chips'), grid = $('#grid'), msg = $('#msg');
+  if (!chips) return;
+  const list = [
+    ...(me.picks.length ? [{ id: 'picks', title: '💖 My picks' }] : []),
+    ...me.playlists.map(p => ({ id: p.id, title: p.title, thumb: p.thumb, sq: true })),
+    ...me.channels
+  ];
+  if (filterCh !== 'all' && !list.some(c => c.id === filterCh)) filterCh = 'all';
+  chips.innerHTML = `<button class="chip txt f ${filterCh === 'all' ? 'on' : ''}" data-ch="all"><span>⭐ All</span></button>` +
+    list.map(c => `<button class="chip f ${c.thumb ? '' : 'txt'} ${filterCh === c.id ? 'on' : ''}" data-ch="${esc(c.id)}">
+      ${c.thumb ? `<img class="${c.sq ? 'sq' : ''}" src="${esc(c.thumb)}" alt="">` : ''}<span>${esc(c.title)}</span></button>`).join('');
+  chips.onclick = e => { const b = e.target.closest('[data-ch]'); if (b) { filterCh = b.dataset.ch; drawHome(false); focusEl(chips.querySelector('.on')); } };
+  const shown = videos.filter(v => filterCh === 'all' || (v.src || []).includes(filterCh));
+  grid.innerHTML = shown.map(card).join('');
+  grid.onclick = e => { const b = e.target.closest('[data-v]'); if (b) { lastCard = b; play(byId[b.dataset.v]); } };
+  msg.textContent = 'No videos here yet.';
+  msg.classList.toggle('hidden', shown.length > 0);
+  if (focusFirst) focusEl(grid.querySelector('.card') || chips.querySelector('.chip'));
+}
+// Pick up changes the parent makes on their phone.
+setInterval(() => { if (!playing && me && $('#grid') && $('#pin').classList.contains('hidden')) renderHome(); }, 10 * 60 * 1000);
+
+function renderTimesUp() {
+  app.innerHTML = `<div class="center"><div style="font-size:6rem">🌙</div><h1>Time's up for today!</h1>
+    <p>Come back tomorrow for more videos.</p>
+    <button class="btn ghost f" id="more">Parent: add 15 minutes</button></div>`;
+  $('#more').onclick = async () => {
+    if (!(await askPin('Parent PIN'))) return;
+    try { const r = await api('/usage/bonus', { method: 'POST', body: { minutes: 15 }, unlock: true }); me.usage = r.usage; renderHome(); }
+    catch (e) { toast(e.message); }
+  };
+  focusEl($('#more'));
+}
+
+function renderMenu() {
+  app.innerHTML = `<div class="center"><h1>Parent menu</h1>
+    <p>Change channels, playlists, filters and time limits on your phone:<br><span class="url">${esc(SITE)}</span></p>
+    <div><button class="btn f" id="back">← Back to videos</button><button class="btn ghost f" id="reload">Reload videos</button>
+    <button class="btn ghost f" id="add">+15 min today</button><button class="btn ghost f" id="unlink">Unlink this TV</button></div>
+    <p id="mmsg" style="font-size:1.2rem"></p></div>`;
+  $('#back').onclick = renderHome;
+  $('#reload').onclick = renderHome;
+  $('#add').onclick = async () => {
+    if (!(await askPin('Parent PIN'))) return;
+    try { const r = await api('/usage/bonus', { method: 'POST', body: { minutes: 15 }, unlock: true }); me.usage = r.usage; $('#mmsg').textContent = 'Added 15 minutes ✓'; }
+    catch (e) { $('#mmsg').textContent = e.message; }
+  };
+  $('#unlink').onclick = async () => {
+    if (!(await askPin('Parent PIN to unlink'))) return;
+    try { await api('/auth/logout', { method: 'POST' }); } catch {}
+    native?.saveCookies?.();
+    renderPair();
+  };
+  focusEl($('#back'));
+}
+
+/* ---------------- Start ---------------- */
+async function start() {
+  try { me = await api('/me'); }
+  catch (e) {
+    if (e.status === 401) return renderPair();
+    app.innerHTML = `<div class="center"><h1>Can't reach Kids Tube</h1><p>Check the internet connection.</p>
+      <button class="btn f" id="retry">Try again</button></div>`;
+    $('#retry').onclick = start; focusEl($('#retry'));
+    return;
+  }
+  renderHome();
+}
+start();
+</script>
+</body>
+</html>

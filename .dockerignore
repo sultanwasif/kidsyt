@@ -3,6 +3,8 @@
 data
 node_modules
 deploy
+tv-android
+tools
 *.md
 *.tar.gz
 .claude

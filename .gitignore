@@ -13,5 +13,15 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Android TV app: build output, local SDK path, signing key + passwords (never commit these)
+tv-android/.gradle/
+tv-android/build/
+tv-android/app/build/
+tv-android/local.properties
+tv-android/keystore.properties
+*.jks
+*.keystore
+.idea/
+
 # Local Claude Code settings
 .claude/
