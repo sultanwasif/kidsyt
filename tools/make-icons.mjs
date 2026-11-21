@@ -74,7 +74,8 @@ function text(x, y, str, x0, y0, w, h, gap, stroke) {
 /* ---------- renderers (pixel coords → colour) ---------- */
 const iconPx = (W, H) => (px, py) => tv(px / W, py / H) || bg(py / H);
 const bannerPx = (W, H) => (px, py) => {
-  const s = W / 320, x = px / s, y = py / s;                // design at 320×180
+  const s = Math.min(W / 320, H / 180);                      // design at 320×180, centred for other shapes
+  const x = (px - (W - 320 * s) / 2) / s, y = (py - (H - 180 * s) / 2) / s;
   const ix = (x - 4) / 142, iy = (y - 19) / 142;             // icon on the left
   if (ix >= 0 && ix <= 1 && iy >= 0 && iy <= 1) { const c = tv(ix, iy); if (c) return c; }
   if (text(x, y, 'HASSLE', 152, 46, 15.5, 38, 6, 3.8)) return WHITE;
@@ -124,3 +125,7 @@ for (const [dpi, n] of [['mdpi', 48], ['hdpi', 72], ['xhdpi', 96], ['xxhdpi', 14
 }
 write(path.join(RES, 'drawable-xhdpi', 'banner.png'), 320, 180, bannerPx);
 write(path.join(RES, 'drawable-xxhdpi', 'banner.png'), 640, 360, bannerPx);
+// Google Play store graphics
+write('store/graphics/icon-512.png', 512, 512, iconPx);
+write('store/graphics/feature-graphic-1024x500.png', 1024, 500, bannerPx);
+write('store/graphics/tv-banner-1280x720.png', 1280, 720, bannerPx);

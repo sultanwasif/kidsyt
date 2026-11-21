@@ -44,11 +44,15 @@
   .f:focus{outline:none}
   .card:focus{transform:scale(1.06);background:#ffffff1a;box-shadow:0 0 0 .3rem var(--accent)}
   .chip:focus,.menu:focus,.btn:focus,.key:focus{box-shadow:0 0 0 .3rem var(--accent);opacity:1}
+  .btn{transition:transform .12s}
+  .btn:focus{transform:scale(1.05)}
+  .btn:not(.ghost):focus{box-shadow:0 0 0 .3rem #fff}           /* yellow button → white ring so the focus shows */
+  .btn.ghost:focus{background:#ffffff33}
   .msg{text-align:center;color:var(--muted);padding:6rem 2rem;font-size:1.8rem}
   .center{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:4rem}
   .center h1{font-size:3.2rem;margin:.4rem 0}
   .center p{font-size:1.6rem;color:var(--muted);line-height:1.5;margin:.6rem 0}
-  .code{font-size:6rem;font-weight:800;letter-spacing:.6rem;color:var(--accent);margin:1.6rem 0;font-variant-numeric:tabular-nums}
+  .code{font-size:5rem;font-weight:800;letter-spacing:.4rem;color:var(--accent);margin:1.4rem 0;font-variant-numeric:tabular-nums;white-space:nowrap}
   .url{color:#fff;font-weight:800}
   .btn{background:var(--accent);color:#222;font-weight:800;border-radius:1rem;padding:1rem 2rem;font-size:1.4rem;margin:.6rem}
   .btn.ghost{background:#ffffff1f;color:#fff}

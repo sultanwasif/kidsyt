@@ -61,6 +61,10 @@ Hassle Free TV is an independent app by Hassle Free Services and is not affiliat
   render `tv-android/app/src/main/res/drawable-xxhdpi/banner.png` larger if asked, or ask Claude for a 1280×720 export).
 - Opt in to Android TV and submit the TV release for TV review.
 
+## Release notes (version 1.0)
+First release: parent-approved channels, playlists and videos on your TV, with a parent PIN, daily time limit
+and watch history. Link your TV with a short code from tv.ehfservices.com/tv.
+
 ## App access (instructions for reviewers)
 > The TV app is linked to a parent account with a one-time code.
 > 1. Open Hassle Free TV on the TV. It shows a 6-character code (e.g. K7P-4QX).
@@ -91,6 +95,13 @@ Hassle Free TV is an independent app by Hassle Free Services and is not affiliat
   (parent-selected YouTube videos) where asked.
 - News app: No · COVID app: No · Government app: No · Financial features: None
 
-## Screenshots needed (TV)
-- At least 1, ideally 4: 1920×1080 PNG/JPG — home grid, a channel selected, the code screen with the story,
-  and the "time's up" screen. Take them from the real app once tv.ehfservices.com is live (Claude can generate them).
+## Graphics (ready in `store/`)
+| Play Console field | File |
+|---|---|
+| App icon (512×512) | `store/graphics/icon-512.png` |
+| Feature graphic (1024×500) | `store/graphics/feature-graphic-1024x500.png` |
+| Android TV banner (1280×720) | `store/graphics/tv-banner-1280x720.png` |
+| Android TV screenshots (1920×1080) | `store/screenshots-tv/01-home.png` … `05-parent-menu.png` |
+
+The screenshots use made-up channels and drawn thumbnails (no third-party video artwork), taken from the real TV page.
+Phone/tablet screenshots are only needed if you later publish the app for phones too.
