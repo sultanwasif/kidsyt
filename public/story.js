@@ -16,5 +16,5 @@ switching between apps all day, and that's not how a family should watch TV.</p>
 <p>Kids see only what's on that list: no search, no surprise recommendations. Parents can block words like
 "horror" or "GTA", set a daily time limit, and see what was watched this week. Everything is protected by a parent PIN.</p>
 <p>I built it for my own family. I hope it makes screen time a little more hassle-free for yours too.</p>
-<p class="sig">— Hassle Free Services</p>
+<p class="sig">— Sultan Wasif, founder of Hassle Free Services</p>
 `;

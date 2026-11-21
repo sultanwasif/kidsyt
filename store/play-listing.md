@@ -43,6 +43,7 @@ Children don't create accounts and we don't collect personal information from ch
 Privacy policy: https://tv.ehfservices.com/privacy
 
 I built it for my own family. I hope it makes screen time a little more hassle-free for yours too.
+— Sultan Wasif, founder of Hassle Free Services
 
 Hassle Free TV is an independent app by Hassle Free Services and is not affiliated with or endorsed by YouTube or Google. Videos are played with YouTube's official embedded player and are subject to the YouTube Terms of Service.
 
