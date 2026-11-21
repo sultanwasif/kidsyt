@@ -339,7 +339,7 @@ async function renderLogin(errCode) {
     <p>YouTube with only the channels <b>you</b> choose.<br>No search, no random recommendations, daily time limits.</p>
     <div id="gbtn"></div><div class="note err" style="text-align:center">${esc(LOGIN_ERRORS[errCode] || '')}</div>
     <p class="small">For parents. We only use your Google name and email to save your settings.
-    <a href="/privacy">Privacy policy</a></p>
+    <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms</a></p>
     <p class="storyhint">↓ Why I built this</p></div>
     <div class="story">${window.HF_STORY || ''}</div></div>`;
   try {
@@ -529,7 +529,8 @@ function renderParent() {
       <div class="note" id="accNote"></div></div>
     <div class="note" id="note"></div>
     <div class="row" style="justify-content:center;margin:8px 0 24px"><button class="btn ghost" id="aboutBtn">ℹ️ About us</button>
-      <a class="btn ghost" href="/privacy" style="text-decoration:none">Privacy policy</a></div></div>`;
+      <a class="btn ghost" href="/privacy" style="text-decoration:none">Privacy policy</a>
+      <a class="btn ghost" href="/terms" style="text-decoration:none">Terms</a></div></div>`;
   $('#aboutBtn').onclick = showAbout;
 
   const drawChans = () => {

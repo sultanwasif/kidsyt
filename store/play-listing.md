@@ -54,6 +54,7 @@ Hassle Free TV is an independent app by Hassle Free Services and is not affiliat
 - Contact email: ehfservices@gmail.com
 - Website: https://tv.ehfservices.com
 - Privacy policy: https://tv.ehfservices.com/privacy
+- Terms of Service (trader declaration): https://tv.ehfservices.com/terms
 - Contains ads: **No** · In-app purchases: **No**
 
 ## Form factors
