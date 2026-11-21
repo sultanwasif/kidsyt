@@ -3,8 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Runs on TVs (Fire TV, Android TV / Google TV) and also installs on phones/tablets -->
-    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <!-- TV-only on Google Play (Android TV / Google TV). Phones and tablets use the website instead.
+         Fire TV declares leanback too, so sideloading / Amazon Appstore still works. -->
+    <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
     <application
