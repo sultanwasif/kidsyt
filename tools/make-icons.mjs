@@ -129,3 +129,13 @@ write(path.join(RES, 'drawable-xxhdpi', 'banner.png'), 640, 360, bannerPx);
 write('store/graphics/icon-512.png', 512, 512, iconPx);
 write('store/graphics/feature-graphic-1024x500.png', 1024, 500, bannerPx);
 write('store/graphics/tv-banner-1280x720.png', 1280, 720, bannerPx);
+// Amazon Appstore (Fire TV): small icon, and a text-free background shown behind the app details
+const backgroundPx = (W, H) => (px, py) => {
+  const b = bg(py / H), s = H * 0.8, ix = (px - (W - s - H * 0.08)) / s, iy = (py - (H - s) / 2) / s;
+  if (ix >= 0 && ix <= 1 && iy >= 0 && iy <= 1) { const c = tv(ix, iy); if (c) return c === PUR ? b.map(v => v * 0.85) : b.map(v => v + (255 - v) * 0.12); }
+  return b;
+};
+write('store/amazon/icon-114.png', 114, 114, iconPx);
+write('store/amazon/icon-512.png', 512, 512, iconPx);
+write('store/amazon/firetv-icon-1280x720.png', 1280, 720, bannerPx);
+write('store/amazon/background-1920x1080.png', 1920, 1080, backgroundPx);
